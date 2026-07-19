@@ -9,14 +9,13 @@ Analysis runs against a **local, OpenAI-compatible LLM** (the same endpoint
 pattern used by [`job-preparation`](../job-preparation)), so your personal data
 stays on infrastructure you control.
 
-> **Status:** all 12 functional requirements are implemented (Phases 0–6, plus
-> the Phase 5b **Next.js web shell**): resume review, ATS, job-description fit
+> **Status:** feature-complete — all planned phases (0–7, incl. the Phase 5b
+> **Next.js web shell**) are done. Resume review, ATS, job-description fit
 > scoring, interactive coaching, versioning, DOCX/PDF + cover-letter generation,
-> and LinkedIn review + change set. Remaining work is Phase 7 polish (file
-> upload, challenge chat, LinkedIn page in the UI). See [ROADMAP.md](ROADMAP.md)
-> for the phased plan and [docs/DESIGN.md](docs/DESIGN.md) for the architecture.
-> The engine is usable through the demo CLIs below and the web app
-> (`npm run web:dev`).
+> LinkedIn review + change set, and a one-call end-to-end tailoring workflow are
+> all implemented, unit-tested, and usable in the browser (`npm run web:dev`) and
+> via the CLIs below. See [ROADMAP.md](ROADMAP.md) for the phased plan and
+> [docs/DESIGN.md](docs/DESIGN.md) for the architecture.
 
 ## What it does (target functionality)
 
@@ -73,9 +72,11 @@ npm run web:dev     # Next.js dev server at http://localhost:3000
 npm run web:build   # production build (also run in CI to type-check the app)
 ```
 
-Paste your resume (and optionally a job description) to get a review, ATS score,
-and job-fit dashboard; generate tailored DOCX downloads; and browse version
-history with diff/revert. Needs a running model (`LLM_BASE_URL`) for analysis.
+Three pages: **Tailor** (upload/paste a resume + job → review, ATS, job-fit
+dashboard, one-click tailoring with DOCX downloads, and version history with
+diff/revert), **Coach** (challenge a score with evidence, or plan an
+improvement), and **LinkedIn** (profile review + copy-paste change set). Needs a
+running model (`LLM_BASE_URL`) for analysis.
 
 ## Layout
 
@@ -88,5 +89,6 @@ history with diff/revert. Needs a running model (`LLM_BASE_URL`) for analysis.
   - `analysis` — resume/ATS review, JD matching, coaching, tailored scoring
   - `versioning` — snapshot store with field-level diff + revert
   - `linkedin` — profile import, review, change set, opt-in assisted fill
-- `web/` — Next.js web shell (Phase 5b) that wraps the engine.
+  - `workflow` — one-call end-to-end tailoring orchestration
+- `web/` — Next.js web shell (Tailor / Coach / LinkedIn) that wraps the engine.
 - `docs/` — design documentation.

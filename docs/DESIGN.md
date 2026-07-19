@@ -69,8 +69,9 @@ resume-preparation/
 │  ├─ ingest/         # ✅ job-description fetch (URL/HTML) + skill/experience extract (injection-guarded)
 │  ├─ analysis/       # ✅ resume/ATS review, JD-match, coaching (challenge/improve), tailored scoring
 │  ├─ versioning/     # ✅ app-level snapshot store: save, history, field-level diff, revert
-│  └─ linkedin/       # ✅ import parse + review + change-set + (optional, gated) assisted fill
-├─ web/               # ✅ Phase 5b: Next.js UI (review, fit dashboard, generate, diff/revert)
+│  ├─ linkedin/       # ✅ import parse + review + change-set + (optional, gated) assisted fill
+│  └─ workflow/       # ✅ Phase 7: one-call end-to-end tailoring orchestration
+├─ web/               # ✅ Phase 5b/7: Next.js UI (Tailor / Coach / LinkedIn)
 ├─ docs/
 ├─ .github/workflows/ci.yml
 └─ package.json (workspaces)
@@ -243,8 +244,19 @@ server-only libs (`unpdf`, `mammoth`, `pdf-lib`, `docx`) are kept external.
 The web shell was split out of the original Phase 5 into its own phase (5b) so the
 engine (requirements 4/5/10/11) shipped first, fully unit-tested; the UI then
 wraps a proven engine. CI runs `next build` (compile + typecheck) as the web
-gate — no model is called at build time. **Phase 7** adds file upload, a
-challenge chat, and a LinkedIn page to the UI.
+gate — no model is called at build time. **Phase 7** added file upload
+(`/api/ingest`), a one-click guided flow over `packages/workflow`
+(`/api/workflow`), a Coach page (`/api/challenge`, `/api/improve`), and a
+LinkedIn page (`/api/linkedin`), plus site nav and empty/error states.
+
+## 11a. End-to-end workflow (`packages/workflow`, Phase 7 ✅)
+
+`runTailoringWorkflow(input, client, store)` composes the whole pipeline as one
+engine function: resume review → ATS → job fit → cover letter → tailored
+documents → (optional) LinkedIn change set → versioned snapshots, calling each
+LLM step once. It is the "one guided flow" both the web app (`/api/workflow`) and
+future automation use, and is covered by an end-to-end integration test that
+drives every package together with a single fake client and a temp store.
 
 ---
 
@@ -267,12 +279,13 @@ challenge chat, and a LinkedIn page to the UI.
 - **Deterministic core is unit-tested** with `node:test` + `tsx`: scoring/tiers
   (Phase 0 ✅), schema validation, structured diff, version save/revert, document
   structuring transforms, JD parsing on saved fixtures.
-- **LLM-backed behavior self-skips in CI** (no model reachable), exactly like
-  `job-preparation`'s eval-gate. Locally, prompt/eval tests run against a live
-  endpoint using fixed seeds and golden expectations.
+- **LLM-backed behavior is tested with fake `ChatClient`s** (routing canned JSON
+  by prompt), including an **end-to-end workflow test** that drives every package
+  together. Live-endpoint evals **self-skip in CI** (no model reachable), exactly
+  like `job-preparation`'s eval-gate, and run locally with fixed seeds.
 - **CI gate** (`.github/workflows/ci.yml`): `npm ci` → typecheck all packages →
-  unit tests with coverage floors. Every phase adds tests; the coverage floor
-  keeps them honest.
+  unit tests with coverage floors → `next build` (compiles + type-checks the web
+  shell). Every phase adds tests; the coverage floor keeps them honest.
 - **Fixtures over live network:** JD ingestion is tested against saved HTML
   fixtures so tests are hermetic and don't hit real job sites.
 
