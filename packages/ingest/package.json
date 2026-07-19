@@ -1,5 +1,5 @@
 {
-  "name": "@resume-prep/analysis",
+  "name": "@resume-prep/ingest",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -9,9 +9,7 @@
   },
   "dependencies": {
     "@resume-prep/documents": "*",
-    "@resume-prep/ingest": "*",
     "@resume-prep/llm": "*",
-    "@resume-prep/schema": "*",
-    "@resume-prep/scoring": "*"
+    "@resume-prep/schema": "*"
   }
 }

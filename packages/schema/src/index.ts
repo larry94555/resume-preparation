@@ -14,5 +14,12 @@ export {
   AtsKeywordCoverage,
   AtsReview,
 } from "./review.js";
+export {
+  JobRequirementKind,
+  JobSource,
+  JobExtraction,
+  JobDescription,
+} from "./job.js";
+export { MatchAssessment } from "./match.js";
 export { validate, parseOrThrow } from "./validate.js";
 export type { ValidationResult } from "./validate.js";
