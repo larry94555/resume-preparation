@@ -21,5 +21,12 @@ export {
   JobDescription,
 } from "./job.js";
 export { MatchAssessment } from "./match.js";
+export {
+  ChallengeQuestions,
+  EvidenceEvaluation,
+  ImprovementEffort,
+  ImprovementAction,
+  ImprovementPlan,
+} from "./coaching.js";
 export { validate, parseOrThrow } from "./validate.js";
 export type { ValidationResult } from "./validate.js";
