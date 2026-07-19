@@ -1,0 +1,15 @@
+{
+  "name": "@resume-prep/linkedin",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@resume-prep/documents": "*",
+    "@resume-prep/llm": "*",
+    "@resume-prep/schema": "*"
+  }
+}

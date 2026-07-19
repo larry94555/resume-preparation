@@ -27,14 +27,15 @@ requirements in the original request.
 | 3 | Job-description analysis & fit scoring (req. 6, 7) | ✅ Complete |
 | 4 | Interactive coaching: challenge & improve (req. 8, 9) | ✅ Complete |
 | 5 | Versioning, generation & tailored scoring (req. 4, 5, 10, 11) — **engine** | ✅ Complete |
-| 5b | Web shell (Next.js) | ⬜ Planned (split out of Phase 5) |
-| 6 | LinkedIn review + change set (req. 1, 2) | ⬜ Planned |
+| 5b | Web shell (Next.js) | ✅ Complete |
+| 6 | LinkedIn review + change set (req. 1, 2) | ✅ Complete |
 | 7 | End-to-end tailoring workflow & polish | ⬜ Planned |
 
-The engine (`packages/*`) covers all 12 functional requirements except LinkedIn
-(Phase 6). It is exercised today through the demo CLIs (`npm run review`, `match`,
-`coach`, `generate`); the browser UI is Phase 5b. Current engine packages:
-`schema`, `scoring`, `llm`, `documents`, `ingest`, `analysis`, `versioning`.
+**All 12 functional requirements are now implemented in the engine.** It is
+exercised through the demo CLIs (`npm run review`, `match`, `coach`, `generate`,
+`linkedin`) and through the **Next.js web shell** (`npm run web:dev`). Engine
+packages: `schema`, `scoring`, `llm`, `documents`, `ingest`, `analysis`,
+`versioning`, `linkedin`; the browser app lives in `web/`.
 
 ---
 
@@ -125,25 +126,34 @@ Delivered as the **engine**; the Next.js web shell was split into Phase 5b.
 - **Deferred to Phase 6:** the LinkedIn change set (kept with the rest of the
   LinkedIn work).
 
-## Phase 5b — Web shell (Next.js) ⬜ → makes prior phases browser-usable
+## Phase 5b — Web shell (Next.js) ✅ → makes prior phases browser-usable
 
-- `web/`: Next.js app wrapping the engine — upload/import, resume + ATS
-  dashboards, JD fit dashboard, challenge chat, generation + explanation page,
-  **version history & diff viewer**.
-- **Tests:** web smoke tests; engine remains covered by its own unit tests.
-- **Exit:** the Phase 1–5 features are usable in the browser.
+- `web/`: Next.js 14 App Router app wrapping the engine. Route handlers
+  (`/api/analyze`, `/api/generate`, `/api/versions`, `/api/health`) call the
+  engine server-side; a client page provides resume + ATS review, a JD **fit
+  dashboard**, tailored DOCX **downloads**, and **version history with diff +
+  revert**. `transpilePackages` + a webpack `extensionAlias` let Next consume the
+  TypeScript engine packages.
+- **Verified by `next build`** (compile + typecheck) in CI; the engine it wraps is
+  covered by unit tests. Model calls happen only at runtime, so the build is
+  hermetic.
+- **Demo:** `npm run web:dev` (needs a running model for analyze/generate).
+- **Exit met:** the Phase 1–5 features are usable in the browser.
 
-## Phase 6 — LinkedIn ⬜ → covers req. 1, 2
+## Phase 6 — LinkedIn ✅ → covers req. 1, 2
 
-- Import a LinkedIn profile (PDF export / pasted text); review with the resume
-  rubric: strengths, weaknesses, score, recommendations (**req. 1**).
-- Produce **copy-paste-ready** field text + step-by-step update instructions, and
-  a versioned **change set**; **optional** browser-assisted fill behind
-  `LINKEDIN_ASSISTED_FILL`, opt-in and confirmation-gated (**req. 2**).
-- **Tests:** profile parsing on fixtures; change-set generation; assisted-fill
-  logic behind a mocked browser driver (no live LinkedIn in CI).
-- **Exit:** import a profile → scored review + copy-paste change set (+ optional
-  assisted fill when explicitly enabled).
+- `packages/linkedin`: import a LinkedIn profile (PDF export / pasted text) into a
+  validated `LinkedInProfile`; review it (strengths, weaknesses, score,
+  recommendations) (**req. 1**).
+- `buildLinkedInChangeSet` produces **copy-paste-ready** field rewrites + step-by-
+  step update instructions (optionally tailored to a target job) (**req. 2**).
+  **Optional** browser-assisted fill (`applyLinkedInChanges`) is behind an
+  explicit `enabled` flag and **per-change confirmation** — it refuses by default
+  (the copy-paste path is the ToS-safe default).
+- Schema: `LinkedInProfile`, `LinkedInReview`, `LinkedInChange`, `LinkedInChangeSet`.
+- **Demo:** `npm run linkedin -- review|changeset <file>`.
+- **Exit met:** import a profile → scored review + copy-paste change set; assisted
+  fill only when explicitly enabled and confirmed.
 
 ## Phase 7 — End-to-end tailoring workflow & polish ⬜
 
@@ -173,8 +183,8 @@ Delivered as the **engine**; the Next.js web shell was split into Phase 5b.
 
 | Req | Description | Phase | Status |
 |-----|-------------|-------|--------|
-| 1 | LinkedIn review (strengths/weaknesses/score/actions) | 6 | ⬜ |
-| 2 | Update LinkedIn or give instructions (opt-in automation) | 6 | ⬜ |
+| 1 | LinkedIn review (strengths/weaknesses/score/actions) | 6 | ✅ |
+| 2 | Update LinkedIn or give instructions (opt-in automation) | 6 | ✅ |
 | 3 | Resume review vs. job categories, best practices, anti-filtering | 2 | ✅ |
 | 4 | Create updated resume in DOCX/PDF | 5 | ✅ |
 | 5 | Version control for all changes (review/revert) | 5 | ✅ |
@@ -182,10 +192,11 @@ Delivered as the **engine**; the Next.js web shell was split into Phase 5b.
 | 7 | Per-skill/experience scores + fit tiers + explanations | 3 (tiers: Phase 0) | ✅ |
 | 8 | Challenge a score; weigh evidence; recommend or explain | 4 | ✅ |
 | 9 | Work on a skill/experience; improvement recommendations | 4 | ✅ |
-| 10 | Generate tailored resume / cover letter + explanation (LinkedIn changes: Phase 6) | 5 | ✅ (cover letter/resume); LinkedIn ⬜ |
+| 10 | Generate tailored resume / cover letter + explanation; LinkedIn change set | 5, 6 | ✅ |
 | 11 | Score updated artifacts (keywords, coverage, objective, best practices) | 5 | ✅ |
 | 12 | ATS optimization score, strengths/weaknesses, changes | 2 | ✅ |
 | 13 | Reuse the local LLM via clear structured prompts | 1 (throughout) | ✅ |
 | 14 | Only touch this repo; no commits | all | ✅ |
 
-_Browser access to these features is delivered in Phase 5b (web shell)._
+_Browser access is delivered by the Phase 5b web shell (`web/`); Phase 7 (polish)
+adds file upload, a challenge chat, and a LinkedIn page to the UI._

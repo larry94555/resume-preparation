@@ -9,12 +9,14 @@ Analysis runs against a **local, OpenAI-compatible LLM** (the same endpoint
 pattern used by [`job-preparation`](../job-preparation)), so your personal data
 stays on infrastructure you control.
 
-> **Status:** engine complete through **Phase 5** (resume review, ATS,
-> job-description fit scoring, interactive coaching, versioning, and DOCX/PDF +
-> cover-letter generation). Next up: the Next.js web shell (Phase 5b) and
-> LinkedIn (Phase 6). See [ROADMAP.md](ROADMAP.md) for the phased build plan and
-> [docs/DESIGN.md](docs/DESIGN.md) for the architecture. Today the engine is
-> driven through the demo CLIs below.
+> **Status:** all 12 functional requirements are implemented (Phases 0–6, plus
+> the Phase 5b **Next.js web shell**): resume review, ATS, job-description fit
+> scoring, interactive coaching, versioning, DOCX/PDF + cover-letter generation,
+> and LinkedIn review + change set. Remaining work is Phase 7 polish (file
+> upload, challenge chat, LinkedIn page in the UI). See [ROADMAP.md](ROADMAP.md)
+> for the phased plan and [docs/DESIGN.md](docs/DESIGN.md) for the architecture.
+> The engine is usable through the demo CLIs below and the web app
+> (`npm run web:dev`).
 
 ## What it does (target functionality)
 
@@ -35,7 +37,6 @@ stays on infrastructure you control.
 - **Improve a skill/experience** — actionable recommendations to raise a score.
 - **Tailored generation** — updated resume (DOCX/PDF), custom cover letter, and a
   LinkedIn change set, each with an explanation page of what changed and why.
-  _(LinkedIn change set lands in Phase 6.)_
 - **Version control** — every change is snapshotted; list, diff, and revert from
   the app.
 
@@ -61,7 +62,20 @@ npm run match    -- <resume.pdf> --job-url <url>                  # per-requirem
 npm run coach    -- challenge <resume.pdf> --requirement "Kubernetes" --evidence "…"   # req. 8
 npm run coach    -- improve   <resume.pdf> --requirement "Kubernetes"                  # req. 9
 npm run generate -- <resume.pdf> --job-html <job.html>           # tailored resume+cover letter+explanation, scored & versioned (req. 4, 5, 10, 11)
+npm run linkedin -- review    <profile.pdf>                      # LinkedIn profile review (req. 1)
+npm run linkedin -- changeset <profile.pdf> --job-text <job.txt> # copy-paste LinkedIn changes + instructions (req. 2)
 ```
+
+## Web app (Phase 5b)
+
+```bash
+npm run web:dev     # Next.js dev server at http://localhost:3000
+npm run web:build   # production build (also run in CI to type-check the app)
+```
+
+Paste your resume (and optionally a job description) to get a review, ATS score,
+and job-fit dashboard; generate tailored DOCX downloads; and browse version
+history with diff/revert. Needs a running model (`LLM_BASE_URL`) for analysis.
 
 ## Layout
 
@@ -73,5 +87,6 @@ npm run generate -- <resume.pdf> --job-html <job.html>           # tailored resu
   - `ingest` — job-description fetch/extract (injection-guarded)
   - `analysis` — resume/ATS review, JD matching, coaching, tailored scoring
   - `versioning` — snapshot store with field-level diff + revert
-- `web/` — Next.js app (Phase 5b) that wraps the engine.
+  - `linkedin` — profile import, review, change set, opt-in assisted fill
+- `web/` — Next.js web shell (Phase 5b) that wraps the engine.
 - `docs/` — design documentation.

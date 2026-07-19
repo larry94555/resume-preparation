@@ -69,8 +69,8 @@ resume-preparation/
 │  ├─ ingest/         # ✅ job-description fetch (URL/HTML) + skill/experience extract (injection-guarded)
 │  ├─ analysis/       # ✅ resume/ATS review, JD-match, coaching (challenge/improve), tailored scoring
 │  ├─ versioning/     # ✅ app-level snapshot store: save, history, field-level diff, revert
-│  └─ linkedin/       # ⬜ Phase 6: import parse + change-set + (optional) assisted fill
-├─ web/               # ⬜ Phase 5b: Next.js UI (upload, dashboards, challenge chat, diff viewer)
+│  └─ linkedin/       # ✅ import parse + review + change-set + (optional, gated) assisted fill
+├─ web/               # ✅ Phase 5b: Next.js UI (review, fit dashboard, generate, diff/revert)
 ├─ docs/
 ├─ .github/workflows/ci.yml
 └─ package.json (workspaces)
@@ -187,22 +187,23 @@ strengths, weaknesses, and concrete before/after change recommendations.
 
 ---
 
-## 9. LinkedIn approach (`packages/linkedin`, Phase 6)
+## 9. LinkedIn approach (`packages/linkedin`, Phase 6 ✅)
 
 **Finding:** LinkedIn offers no supported third-party API to edit a personal
 profile; automated scraping/writing violates the LinkedIn User Agreement and can
 trigger account restrictions. Design accordingly:
 
-- **Default path (safe):** user provides their profile as a saved PDF export or
-  pasted text. The app parses it, reviews it (§6 rubric), and outputs
-  **copy-paste-ready** rewritten text per field plus **step-by-step** "where to
-  click" update instructions. No automation, no ToS risk.
-- **Optional assisted fill (off by default):** gated behind
-  `LINKEDIN_ASSISTED_FILL=true`, an assisted mode can drive the user's own
-  logged-in browser to fill fields. It is **opt-in**, prominently warns about ToS
-  / account-limit risk, requires per-field confirmation, and performs no
-  irreversible action without an explicit click. This is a convenience wrapper
-  over the safe path, never a replacement for it.
+- **Default path (safe):** the user provides their profile as a saved PDF export
+  or pasted text. `importLinkedInProfile` parses it, `reviewLinkedIn` reviews it,
+  and `buildLinkedInChangeSet` outputs **copy-paste-ready** rewritten text per
+  field plus **step-by-step** "where to click" instructions. No automation.
+- **Optional assisted fill (off by default):** `applyLinkedInChanges` takes an
+  `AssistedFillDriver` and refuses unless `enabled: true` (mirrors
+  `LINKEDIN_ASSISTED_FILL`) **and** each change passes a per-change `confirm`
+  callback (which defaults to rejecting). No real browser driver ships in the
+  engine — the interface exists so the flow is testable and so any future driver
+  is confirmation-gated by construction. It is a convenience wrapper over the
+  safe path, never a replacement for it.
 
 ---
 
@@ -227,17 +228,23 @@ change to any document and every recommendation set.
 
 ---
 
-## 11. Web app (`web/`, Phase 5b; polished in Phase 7)
+## 11. Web app (`web/`, Phase 5b ✅; polished in Phase 7)
 
-Next.js app wrapping the engine. Core screens: upload/import; resume review
-dashboard (score, strengths/weaknesses, recommendations); job analysis + fit
-dashboard (per-item scores, critical gaps); **challenge chat**; ATS panel;
-generation + **explanation page**; **version history + diff viewer**.
+Next.js 14 (App Router) app wrapping the engine. Route handlers under
+`app/api/*` (`analyze`, `generate`, `versions`, `health`) run server-side
+(`runtime = "nodejs"`) and call the engine directly; a single client page renders
+the results. Delivered screens: paste resume/job → resume review + ATS panel →
+**job-fit dashboard** (per-item scores, critical gaps) → tailored DOCX
+**downloads** → **version history with diff + revert**. Next consumes the
+TypeScript engine packages via `transpilePackages` + a webpack `extensionAlias`
+that maps the packages' `.js` import specifiers to their `.ts` sources; heavy
+server-only libs (`unpdf`, `mammoth`, `pdf-lib`, `docx`) are kept external.
 
-The web shell was split out of the original Phase 5 into its own phase (5b): the
-engine for requirements 4/5/10/11 shipped first and is exercised through the demo
-CLIs (`review`, `match`, `coach`, `generate`), so the browser UI can wrap a
-proven, fully-tested engine rather than being built alongside it.
+The web shell was split out of the original Phase 5 into its own phase (5b) so the
+engine (requirements 4/5/10/11) shipped first, fully unit-tested; the UI then
+wraps a proven engine. CI runs `next build` (compile + typecheck) as the web
+gate — no model is called at build time. **Phase 7** adds file upload, a
+challenge chat, and a LinkedIn page to the UI.
 
 ---
 
