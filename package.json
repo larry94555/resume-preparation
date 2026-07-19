@@ -1,0 +1,24 @@
+{
+  "name": "resume-preparation",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Analyze and improve a resume, LinkedIn profile, and cover letters against job descriptions using a local LLM, with versioned change history.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p packages/scoring/tsconfig.json",
+    "test": "tsx --test packages/scoring/src/fit.test.ts",
+    "test:coverage": "node --import tsx --test --experimental-test-coverage \"packages/**/*.test.ts\"",
+    "test:coverage:ci": "node --import tsx --test --experimental-test-coverage --test-coverage-lines=85 --test-coverage-branches=80 --test-coverage-functions=85 \"packages/**/*.test.ts\""
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "tsx": "^4.19.1",
+    "typescript": "^5.6.2"
+  }
+}
