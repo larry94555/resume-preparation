@@ -28,8 +28,12 @@ below.
 ## What you'll need
 
 - **Node 22+** — check with `node --version`.
-- **A local model server** exposing an OpenAI-compatible `/v1` endpoint. The
-  quickest is [Ollama](https://ollama.com); llama.cpp's `llama-server` also works.
+- **A model endpoint** exposing an OpenAI-compatible `/v1` API. Two options, and
+  the app works the same either way:
+  - **Local** (fully offline) — [Ollama](https://ollama.com) is quickest;
+    llama.cpp's `llama-server` also works.
+  - **A hosted llama server over the web** — any reachable
+    `llama-server` / vLLM / Ollama URL, optionally secured with an API key.
 - **Your three inputs:**
   - **Résumé** — a `.pdf`, `.docx`, or plain-text file (e.g. `resume.pdf`).
   - **Job description** — save it as a text file (e.g. `job.txt`), or have the
@@ -44,7 +48,9 @@ Put these somewhere handy, e.g. a `~/job-hunt/` folder.
 
 ## Step 0 — One-time setup
 
-### 0a. Start a local model (Ollama example)
+### 0a. (Local option) Start a local model
+
+Skip this if you'll use a hosted server. For a local model with Ollama:
 
 ```bash
 # install Ollama from https://ollama.com, then:
@@ -54,32 +60,46 @@ ollama serve                 # serves an OpenAI-compatible API at http://localho
 
 Leave `ollama serve` running in its own terminal. (With llama.cpp instead:
 `llama-server -m <model>.gguf --host 0.0.0.0 --port 8080 -c 4096 --parallel 1`,
-which serves `http://localhost:8080/v1`.)
+serving `http://localhost:8080/v1`.)
 
-### 0b. Point the app at your model
+### 0b. Point the app at your model — local **or** over the web
 
-The app reads the model endpoint from environment variables. Set them **in the
-terminal you'll run commands from** so both the CLIs and the web app pick them up.
+Configuration lives in a **gitignored secrets file** that both the CLIs and the
+web app load automatically. Copy the template:
 
-**PowerShell (Windows):**
-```powershell
-$env:LLM_BASE_URL = "http://localhost:11434/v1"   # Ollama default
-$env:LLM_MODEL    = "llama3.1:8b"                  # the model you pulled
-# optional: share one version store between the CLIs and the web app
-$env:DATA_DIR     = "$PWD\.data"
-```
-
-**bash / zsh (macOS/Linux/Git Bash):**
 ```bash
-export LLM_BASE_URL="http://localhost:11434/v1"
-export LLM_MODEL="llama3.1:8b"
-export DATA_DIR="$PWD/.data"
+cp secrets/secrets.env.example secrets/secrets.env      # PowerShell: Copy-Item secrets/secrets.env.example secrets/secrets.env
 ```
 
-> These are pinned to `temperature 0` + a fixed seed internally, so scores are
-> **reproducible**: re-running after an edit shows a real change, not noise.
-> (You can also copy `.env.example` to `.env` and run the CLIs with
-> `node --env-file=.env …`, but exporting in the shell is simplest.)
+Open `secrets/secrets.env` and keep **one** of these:
+
+**Local model (Ollama):**
+```ini
+LLM_BASE_URL=http://localhost:11434/v1
+LLM_MODEL=llama3.1:8b
+# LLM_API_KEY=            # not needed for a local, open endpoint
+```
+
+**A llama server over the web (hosted):**
+```ini
+LLAMA_SERVER_URL=https://your-llama-server.example.com/v1
+API_KEY=your-secret-bearer-token         # matches the server's --api-key
+LLAMA_MODEL=local                         # single-model llama-server ignores this
+# LLM_TIMEOUT_MS=120000                    # raise for a slow remote model
+```
+
+`LLAMA_SERVER_URL` and `API_KEY` are friendly aliases — the loader maps them to
+`LLM_BASE_URL` / `LLM_API_KEY` automatically. Verify what's loaded (secrets are
+masked):
+
+```bash
+npm run secrets:check
+```
+
+> Scores are pinned to `temperature 0` + a fixed seed, so re-running after an edit
+> shows a real change, not noise. If you prefer, you can set `LLM_BASE_URL` /
+> `LLM_API_KEY` as real shell environment variables instead — those always win
+> over the file.
 
 ### 0c. Install and smoke-test
 
@@ -325,12 +345,13 @@ the gaps to weigh before you submit.
 ## Troubleshooting
 
 - **Header says "model offline" / CLI prints "No LLM endpoint reachable."**
-  Your model server isn't running or `LLM_BASE_URL` is wrong. Confirm
-  `ollama serve` is up and that `curl http://localhost:11434/v1/models` responds,
-  then re-check the env vars in this same terminal.
-- **`npm run web:dev` starts but analysis fails.** The web app inherits env vars
-  from the terminal that launched it — set `LLM_BASE_URL` (Step 0b) **before**
-  `npm run web:dev`, or restart it after setting them.
+  Your endpoint isn't reachable or the URL/key is wrong. Run `npm run secrets:check`
+  to see the effective `LLM_BASE_URL`. For a local model, confirm the server is up
+  (`curl http://localhost:11434/v1/models`). For a hosted server, confirm the URL
+  is reachable and the `API_KEY` matches the server's `--api-key`.
+- **Edited `secrets/secrets.env` while the web app was running.** The web app
+  loads the secrets file on startup, so **restart** `npm run web:dev` after
+  changing it (the CLIs re-read it on every run).
 - **A PDF returns little/no text.** Scanned/image-only PDFs have no extractable
   text (no OCR). Export a text-based PDF/DOCX, or paste the text.
 - **Small models sometimes return odd JSON.** The app automatically re-prompts to

@@ -13,7 +13,10 @@ web/out/
 # Environment & secrets
 .env
 .env.local
-secrets/
+# Ignore real secrets, but keep the committed template + README.
+secrets/*
+!secrets/*.example
+!secrets/README.md
 
 # App data / snapshot store (contains personal resume/profile data — never commit)
 .data/

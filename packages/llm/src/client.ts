@@ -51,7 +51,11 @@ export class LlamaClient implements ChatClient {
   maxTokens: number;
 
   constructor(o: LlamaOptions = {}) {
-    this.baseUrl = o.baseUrl ?? llmEnv("BASE_URL") ?? "http://localhost:8080/v1";
+    // Endpoint precedence: explicit option → LLM_BASE_URL/LLAMA_BASE_URL →
+    // LLM_SERVER_URL/LLAMA_SERVER_URL (the name used for a hosted llama server) →
+    // local default. This lets the same code target a local model or a remote one.
+    this.baseUrl =
+      o.baseUrl ?? llmEnv("BASE_URL") ?? llmEnv("SERVER_URL") ?? "http://localhost:8080/v1";
     this.model = o.model ?? llmEnv("MODEL") ?? "local";
     this.timeoutMs = o.timeoutMs ?? (Number(llmEnv("TIMEOUT_MS")) || 60000);
     this.apiKey = o.apiKey ?? llmEnv("API_KEY");

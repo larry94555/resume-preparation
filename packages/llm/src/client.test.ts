@@ -97,6 +97,35 @@ test("health reflects endpoint reachability", async () => {
   assert.equal(await down.health(), false);
 });
 
+test("baseUrl falls back to LLM_/LLAMA_SERVER_URL when no BASE_URL is set", () => {
+  const saved = {
+    base: process.env.LLM_BASE_URL,
+    lbase: process.env.LLAMA_BASE_URL,
+    lserver: process.env.LLAMA_SERVER_URL,
+    server: process.env.LLM_SERVER_URL,
+  };
+  try {
+    delete process.env.LLM_BASE_URL;
+    delete process.env.LLAMA_BASE_URL;
+    delete process.env.LLM_SERVER_URL;
+    process.env.LLAMA_SERVER_URL = "https://llm.example.com/v1";
+    assert.equal(new LlamaClient().baseUrl, "https://llm.example.com/v1");
+    // An explicit BASE_URL still wins over SERVER_URL.
+    process.env.LLM_BASE_URL = "http://localhost:11434/v1";
+    assert.equal(new LlamaClient().baseUrl, "http://localhost:11434/v1");
+  } finally {
+    for (const [k, v] of [
+      ["LLM_BASE_URL", saved.base],
+      ["LLAMA_BASE_URL", saved.lbase],
+      ["LLAMA_SERVER_URL", saved.lserver],
+      ["LLM_SERVER_URL", saved.server],
+    ] as const) {
+      if (v === undefined) delete process.env[k];
+      else process.env[k] = v;
+    }
+  }
+});
+
 test("llmEnv honors LLM_ then falls back to LLAMA_ alias", () => {
   const prevLlm = process.env.LLM_TESTKEY;
   const prevLlama = process.env.LLAMA_TESTKEY;

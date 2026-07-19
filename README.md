@@ -55,9 +55,21 @@ npm run typecheck
 npm test          # deterministic unit tests; live-model evals self-skip
 ```
 
-Requires Node 22+. Copy `.env.example` to `.env` and point `LLM_BASE_URL` at your
-model server to enable LLM-backed features (not needed for the deterministic
-unit tests).
+Requires Node 22+. To enable LLM-backed features (not needed for the unit tests),
+configure a model — **local or a llama server over the web** — in a gitignored
+secrets file:
+
+```bash
+cp secrets/secrets.env.example secrets/secrets.env   # then edit it
+npm run secrets:check                                # shows what's loaded (masked)
+```
+
+- **Local:** `LLM_BASE_URL=http://localhost:11434/v1` + `LLM_MODEL=…` (Ollama).
+- **Hosted:** `LLAMA_SERVER_URL=https://…/v1` + `API_KEY=…` (aliases for
+  `LLM_BASE_URL` / `LLM_API_KEY`).
+
+The CLIs and web app load this file automatically. See
+[Local_Walkthrough.md](Local_Walkthrough.md) for the full guide.
 
 ## Demo CLIs (need a running model — set `LLM_BASE_URL`)
 
