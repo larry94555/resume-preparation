@@ -21,6 +21,7 @@ export {
   JobDescription,
 } from "./job.js";
 export { MatchAssessment } from "./match.js";
+export { CoverLetter } from "./cover-letter.js";
 export {
   ChallengeQuestions,
   EvidenceEvaluation,

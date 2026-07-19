@@ -12,6 +12,7 @@
     "@resume-prep/ingest": "*",
     "@resume-prep/llm": "*",
     "@resume-prep/schema": "*",
-    "@resume-prep/scoring": "*"
+    "@resume-prep/scoring": "*",
+    "@resume-prep/versioning": "*"
   }
 }

@@ -37,3 +37,5 @@ export type {
   RescoreResult,
 } from "./challenge.js";
 export { planImprovement } from "./improve.js";
+export { scoreTailoredResume, summarizeCoverage } from "./tailored.js";
+export type { TailoredScore } from "./tailored.js";
