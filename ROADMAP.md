@@ -29,13 +29,15 @@ requirements in the original request.
 | 5 | Versioning, generation & tailored scoring (req. 4, 5, 10, 11) — **engine** | ✅ Complete |
 | 5b | Web shell (Next.js) | ✅ Complete |
 | 6 | LinkedIn review + change set (req. 1, 2) | ✅ Complete |
-| 7 | End-to-end tailoring workflow & polish | ⬜ Planned |
+| 7 | End-to-end tailoring workflow & polish | ✅ Complete |
 
-**All 12 functional requirements are now implemented in the engine.** It is
-exercised through the demo CLIs (`npm run review`, `match`, `coach`, `generate`,
-`linkedin`) and through the **Next.js web shell** (`npm run web:dev`). Engine
-packages: `schema`, `scoring`, `llm`, `documents`, `ingest`, `analysis`,
-`versioning`, `linkedin`; the browser app lives in `web/`.
+**All planned phases are complete — every one of the 12 functional requirements
+is implemented, unit-tested, and usable in the browser.** The engine is exercised
+through the demo CLIs (`npm run review`, `match`, `coach`, `generate`,
+`linkedin`), a one-call orchestration (`packages/workflow`), and the **Next.js web
+shell** (`npm run web:dev`). Engine packages: `schema`, `scoring`, `llm`,
+`documents`, `ingest`, `analysis`, `versioning`, `linkedin`, `workflow`; the
+browser app lives in `web/`.
 
 ---
 
@@ -155,13 +157,19 @@ Delivered as the **engine**; the Next.js web shell was split into Phase 5b.
 - **Exit met:** import a profile → scored review + copy-paste change set; assisted
   fill only when explicitly enabled and confirmed.
 
-## Phase 7 — End-to-end tailoring workflow & polish ⬜
+## Phase 7 — End-to-end tailoring workflow & polish ✅
 
-- One guided flow: resume + JD in → analysis → challenge/improve → generate
-  tailored resume + cover letter + LinkedIn change set → score → versioned — all
-  in the web app.
-- UX polish, error handling, empty/skip states, docs/walkthrough.
-- **Exit:** a complete, demoable target-a-job workflow.
+- `packages/workflow`: `runTailoringWorkflow` runs the whole flow as one engine
+  function — review → ATS → job fit → cover letter → tailored documents →
+  (optional) LinkedIn change set → versioned — calling each LLM step once. Backed
+  by an **end-to-end integration test** that drives the full cross-package
+  pipeline with a single fake client and a temp store.
+- Web polish: **file upload** (PDF/DOCX resume, `/api/ingest`); a **guided
+  one-click flow** (`/api/workflow`); a **Coach page** (challenge a score /
+  improve a skill, `/api/challenge` + `/api/improve`); a **LinkedIn page**
+  (`/api/linkedin`); site nav, empty/error states, and download buttons.
+- **Exit met:** a complete target-a-job workflow, demoable in the browser and as
+  a single engine call.
 
 ## Later / optional (not required for the target functionality)
 
@@ -198,5 +206,6 @@ Delivered as the **engine**; the Next.js web shell was split into Phase 5b.
 | 13 | Reuse the local LLM via clear structured prompts | 1 (throughout) | ✅ |
 | 14 | Only touch this repo; no commits | all | ✅ |
 
-_Browser access is delivered by the Phase 5b web shell (`web/`); Phase 7 (polish)
-adds file upload, a challenge chat, and a LinkedIn page to the UI._
+_Every requirement is implemented, unit-tested, and available in the browser
+(`web/`) as well as via CLIs. `packages/workflow` runs the whole flow as a single
+engine call._

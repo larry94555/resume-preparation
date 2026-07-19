@@ -1,34 +1,16 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DOCX_MIME, downloadBase64, postJson, uploadFileText } from "./ui";
 
-// The API payloads mirror the engine's outputs; typed loosely here since this
-// shell just renders them. (The engine itself is fully typed and unit-tested.)
+// API payloads mirror the engine's (fully-typed, unit-tested) outputs; typed
+// loosely here since this shell only renders them.
 type Json = any;
-
-const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
-function downloadBase64(name: string, base64: string, mime: string) {
-  const a = document.createElement("a");
-  a.href = `data:${mime};base64,${base64}`;
-  a.download = name;
-  a.click();
-}
-
-async function postJson(url: string, body: unknown): Promise<Json> {
-  const res = await fetch(url, {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data?.error ?? `Request failed (${res.status})`);
-  return data;
-}
 
 export default function Home() {
   const [resumeText, setResumeText] = useState("");
   const [jobText, setJobText] = useState("");
+  const [linkedinText, setLinkedinText] = useState("");
   const [health, setHealth] = useState<boolean | null>(null);
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
@@ -56,15 +38,22 @@ export default function Home() {
     }
   }
 
+  const onUpload = (file: File | undefined) => {
+    if (!file) return;
+    run("upload", async () => setResumeText(await uploadFileText(file)));
+  };
+
   const analyze = () =>
     run("analyze", async () => {
       setGeneration(null);
       setAnalysis(await postJson("/api/analyze", { resumeText, jobText }));
     });
 
-  const generate = () =>
-    run("generate", async () => {
-      setGeneration(await postJson("/api/generate", { resumeText, jobText }));
+  const tailor = () =>
+    run("tailor", async () => {
+      const r = await postJson("/api/workflow", { resumeText, jobText, linkedinText });
+      setAnalysis({ reviews: { review: r.review, reviewTier: r.reviewTier, ats: r.ats, atsTier: r.atsTier }, fit: r.fit });
+      setGeneration(r);
       await loadVersions();
     });
 
@@ -91,11 +80,10 @@ export default function Home() {
 
   const rv = analysis?.reviews;
   const fit = analysis?.fit;
-  const score = generation?.score;
 
   return (
     <main>
-      <h1>Resume Preparation</h1>
+      <h1>Tailor your resume</h1>
       <p className="muted">
         Local-first resume &amp; cover-letter coach.{" "}
         {health === null ? (
@@ -110,24 +98,38 @@ export default function Home() {
       <div className="grid">
         <div>
           <label>
-            <strong>Resume text</strong>
+            <strong>Resume</strong>{" "}
+            <span className="muted">
+              paste text, or upload{" "}
+              <input
+                type="file"
+                accept=".pdf,.docx,.txt,.html"
+                onChange={(e) => onUpload(e.target.files?.[0])}
+                disabled={!!busy}
+              />
+            </span>
           </label>
-          <textarea value={resumeText} onChange={(e) => setResumeText(e.target.value)} placeholder="Paste your resume as plain text…" />
+          <textarea value={resumeText} onChange={(e) => setResumeText(e.target.value)} placeholder="Paste your resume, or upload a PDF/DOCX above…" />
         </div>
         <div>
           <label>
-            <strong>Job description</strong> <span className="muted">(optional for review; required to generate)</span>
+            <strong>Job description</strong> <span className="muted">(optional for review; required to tailor)</span>
           </label>
           <textarea value={jobText} onChange={(e) => setJobText(e.target.value)} placeholder="Paste the job description…" />
         </div>
       </div>
 
+      <details>
+        <summary className="muted">Optional: paste your LinkedIn profile to also get a change set</summary>
+        <textarea value={linkedinText} onChange={(e) => setLinkedinText(e.target.value)} placeholder="Paste your LinkedIn profile text…" />
+      </details>
+
       <div className="row">
         <button onClick={analyze} disabled={!!busy || !resumeText.trim()}>
           {busy === "analyze" ? "Analyzing…" : "Analyze resume"}
         </button>
-        <button onClick={generate} disabled={!!busy || !resumeText.trim() || !jobText.trim()}>
-          {busy === "generate" ? "Generating…" : "Generate tailored docs"}
+        <button onClick={tailor} disabled={!!busy || !resumeText.trim() || !jobText.trim()}>
+          {busy === "tailor" ? "Tailoring…" : "Run full tailoring"}
         </button>
         <button className="secondary" onClick={() => run("versions", loadVersions)} disabled={!!busy}>
           Load version history
@@ -170,30 +172,18 @@ export default function Home() {
 
       {fit && (
         <section className="card">
-          <h2>
-            Job fit — {fit.overallScore}/100 <span className="pill">{fit.verdict}</span>
-          </h2>
+          <h2>Job fit — {fit.overallScore}/100 <span className="pill">{fit.verdict}</span></h2>
           {fit.criticalGaps.length > 0 && (
             <p className="error">Critical gaps: {fit.criticalGaps.map((g: Json) => g.label).join(", ")}</p>
           )}
           <table>
             <thead>
-              <tr>
-                <th>Requirement</th>
-                <th>Kind</th>
-                <th>Importance</th>
-                <th>Score</th>
-                <th>Tier</th>
-              </tr>
+              <tr><th>Requirement</th><th>Kind</th><th>Importance</th><th>Score</th><th>Tier</th></tr>
             </thead>
             <tbody>
               {fit.matches.map((m: Json, i: number) => (
                 <tr key={i}>
-                  <td>{m.label}</td>
-                  <td>{m.kind}</td>
-                  <td>{m.importance}</td>
-                  <td>{m.score}</td>
-                  <td>{m.tier}</td>
+                  <td>{m.label}</td><td>{m.kind}</td><td>{m.importance}</td><td>{m.score}</td><td>{m.tier}</td>
                 </tr>
               ))}
             </tbody>
@@ -204,28 +194,27 @@ export default function Home() {
       {generation && (
         <section className="card">
           <h2>Tailored documents</h2>
-          {score && (
-            <p>
-              Fit {score.fit.overallScore}/100 · ATS {score.ats.atsScore}/100 · clear objective:{" "}
-              {score.hasClearObjective ? "yes" : "no"}
-              <br />
-              <span className="muted">
-                Covered: {score.coveredRequirements.join(", ") || "—"} · Missing:{" "}
-                {score.missingRequirements.join(", ") || "—"}
-              </span>
-            </p>
-          )}
+          <p className="muted">
+            Covered: {generation.coverage.covered.join(", ") || "—"} · Missing:{" "}
+            {generation.coverage.missing.join(", ") || "—"}
+          </p>
           <div className="row">
-            <button onClick={() => downloadBase64("tailored-resume.docx", generation.resumeDocxBase64, DOCX_MIME)}>
+            <button onClick={() => downloadBase64("tailored-resume.docx", generation.documents.resumeDocxBase64, DOCX_MIME)}>
               Download resume .docx
             </button>
-            <button onClick={() => downloadBase64("cover-letter.docx", generation.coverDocxBase64, DOCX_MIME)}>
+            <button onClick={() => downloadBase64("cover-letter.docx", generation.documents.coverLetterDocxBase64, DOCX_MIME)}>
               Download cover letter .docx
             </button>
           </div>
+          {generation.linkedin && (
+            <p className="muted">
+              LinkedIn review: {generation.linkedin.review.overallScore}/100 · {generation.linkedin.changeSet.changes.length} suggested changes (see LinkedIn tab).
+            </p>
+          )}
           <p className="muted">
             Saved versions — resume: <code>{generation.versions.resume}</code>, cover:{" "}
-            <code>{generation.versions.cover}</code>
+            <code>{generation.versions.coverLetter}</code>
+            {generation.versions.linkedInChangeSet ? <> , LinkedIn: <code>{generation.versions.linkedInChangeSet}</code></> : null}
           </p>
         </section>
       )}
@@ -239,15 +228,7 @@ export default function Home() {
             </button>
           </div>
           <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Created</th>
-                <th>Source</th>
-                <th>Note</th>
-                <th></th>
-              </tr>
-            </thead>
+            <thead><tr><th>ID</th><th>Created</th><th>Source</th><th>Note</th><th></th></tr></thead>
             <tbody>
               {versions.map((v: Json) => (
                 <tr key={v.id}>
@@ -255,11 +236,7 @@ export default function Home() {
                   <td className="muted">{v.createdAt}</td>
                   <td>{v.source}</td>
                   <td className="muted">{v.note ?? ""}</td>
-                  <td>
-                    <button className="secondary" onClick={() => revert(v.id)} disabled={!!busy}>
-                      Revert
-                    </button>
-                  </td>
+                  <td><button className="secondary" onClick={() => revert(v.id)} disabled={!!busy}>Revert</button></td>
                 </tr>
               ))}
             </tbody>
@@ -273,9 +250,7 @@ export default function Home() {
                 <ul>
                   {diff.map((d: Json, i: number) => (
                     <li key={i}>
-                      <code>
-                        {d.type === "added" ? "+" : d.type === "removed" ? "−" : "~"} {d.path}
-                      </code>
+                      <code>{d.type === "added" ? "+" : d.type === "removed" ? "−" : "~"} {d.path}</code>
                     </li>
                   ))}
                 </ul>

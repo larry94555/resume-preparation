@@ -12,6 +12,7 @@ const enginePackages = [
   "@resume-prep/analysis",
   "@resume-prep/versioning",
   "@resume-prep/linkedin",
+  "@resume-prep/workflow",
 ];
 
 /** @type {import('next').NextConfig} */

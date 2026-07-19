@@ -12,7 +12,7 @@
     "node": ">=20"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p packages/schema/tsconfig.json && tsc --noEmit -p packages/scoring/tsconfig.json && tsc --noEmit -p packages/llm/tsconfig.json && tsc --noEmit -p packages/documents/tsconfig.json && tsc --noEmit -p packages/versioning/tsconfig.json && tsc --noEmit -p packages/ingest/tsconfig.json && tsc --noEmit -p packages/analysis/tsconfig.json && tsc --noEmit -p packages/linkedin/tsconfig.json",
+    "typecheck": "tsc --noEmit -p packages/schema/tsconfig.json && tsc --noEmit -p packages/scoring/tsconfig.json && tsc --noEmit -p packages/llm/tsconfig.json && tsc --noEmit -p packages/documents/tsconfig.json && tsc --noEmit -p packages/versioning/tsconfig.json && tsc --noEmit -p packages/ingest/tsconfig.json && tsc --noEmit -p packages/analysis/tsconfig.json && tsc --noEmit -p packages/linkedin/tsconfig.json && tsc --noEmit -p packages/workflow/tsconfig.json",
     "test": "node --import tsx --test \"packages/**/*.test.ts\"",
     "review": "node --import tsx packages/analysis/bin/review.ts",
     "match": "node --import tsx packages/analysis/bin/match.ts",
