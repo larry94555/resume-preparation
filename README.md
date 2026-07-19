@@ -39,6 +39,14 @@ stays on infrastructure you control.
 - **Version control** — every change is snapshotted; list, diff, and revert from
   the app.
 
+## Try it locally (end to end)
+
+New here and want to run the whole thing against your own résumé, LinkedIn
+profile, and a job posting? Follow **[Local_Walkthrough.md](Local_Walkthrough.md)**
+— it covers installing a local model, evaluating your job-readiness, coaching,
+generating a tailored résumé + cover letter, and a final pre-submission gap check
+(in both the web app and the CLIs). Everything runs on your machine.
+
 ## Quick start (developers)
 
 ```bash
