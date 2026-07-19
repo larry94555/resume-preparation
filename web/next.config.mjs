@@ -19,6 +19,8 @@ const enginePackages = [
 const nextConfig = {
   transpilePackages: enginePackages,
   experimental: {
+    // Load secrets/secrets.env on server startup (see instrumentation.ts).
+    instrumentationHook: true,
     serverComponentsExternalPackages: ["unpdf", "mammoth", "pdf-lib", "docx"],
   },
   webpack(config) {

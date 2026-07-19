@@ -293,6 +293,22 @@ drives every package together with a single fake client and a temp store.
 
 ## 14. Configuration
 
-All via `.env` (see `.env.example`): `LLM_*` for the model endpoint, `DATA_DIR`
-for the store, `LINKEDIN_ASSISTED_FILL` for the opt-in automation. No secrets in
-source; nothing about a specific person in the repo.
+Model settings live in a **gitignored `secrets/secrets.env`** (copied from
+`secrets/secrets.env.example`), loaded by `utils/load-secrets.mjs` — which the
+CLIs preload (`node --import ./utils/load-secrets.mjs …`) and the web app loads via
+`web/instrumentation.ts` on startup. Values already in the shell environment
+always win over the file; a missing file is a no-op (so tests/CI are unaffected).
+
+The loader maps friendly aliases to the canonical vars the client reads, so the
+**same code targets a local model or a hosted llama server over the web** by
+editing one file:
+
+- `LLAMA_SERVER_URL` / `LLAMA_BASE_URL` / `LLM_SERVER_URL` → `LLM_BASE_URL`
+- `API_KEY` / `LLAMA_API_KEY` → `LLM_API_KEY`
+- `LLAMA_MODEL` → `LLM_MODEL`, plus `LLAMA_TIMEOUT_MS` / `MAX_TOKENS` / `SEED`
+
+The `LlamaClient` also reads `LLM_SERVER_URL` / `LLAMA_SERVER_URL` directly as a
+`baseUrl` fallback. Other config: `DATA_DIR` for the snapshot store,
+`LINKEDIN_ASSISTED_FILL` for the opt-in automation. No secrets in source; nothing
+about a specific person in the repo. `.env` remains supported for
+`node --env-file=.env …`.
