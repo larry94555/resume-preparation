@@ -15,6 +15,7 @@
     "test": "node --import tsx --test \"packages/**/*.test.ts\"",
     "review": "node --import tsx packages/analysis/bin/review.ts",
     "match": "node --import tsx packages/analysis/bin/match.ts",
+    "coach": "node --import tsx packages/analysis/bin/coach.ts",
     "test:coverage": "node --import tsx --test --experimental-test-coverage \"packages/**/*.test.ts\"",
     "test:coverage:ci": "node --import tsx --test --experimental-test-coverage --test-coverage-lines=85 --test-coverage-branches=80 --test-coverage-functions=85 \"packages/**/*.test.ts\""
   },

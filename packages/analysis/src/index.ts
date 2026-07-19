@@ -22,3 +22,18 @@ export {
   scoreRequirementSystem,
   buildScoreRequirementUser,
 } from "./prompts/score-requirement.js";
+export {
+  startChallengeSession,
+  challengeReducer,
+  augmentResumeWithEvidence,
+  askChallengeQuestions,
+  evaluateEvidence,
+  submitChallengeEvidence,
+} from "./challenge.js";
+export type {
+  ChallengeSession,
+  ChallengeEvent,
+  ChallengeStatus,
+  RescoreResult,
+} from "./challenge.js";
+export { planImprovement } from "./improve.js";
