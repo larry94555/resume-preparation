@@ -11,8 +11,8 @@
     "node": ">=20"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p packages/scoring/tsconfig.json",
-    "test": "tsx --test packages/scoring/src/fit.test.ts",
+    "typecheck": "tsc --noEmit -p packages/schema/tsconfig.json && tsc --noEmit -p packages/scoring/tsconfig.json && tsc --noEmit -p packages/llm/tsconfig.json && tsc --noEmit -p packages/documents/tsconfig.json",
+    "test": "node --import tsx --test \"packages/**/*.test.ts\"",
     "test:coverage": "node --import tsx --test --experimental-test-coverage \"packages/**/*.test.ts\"",
     "test:coverage:ci": "node --import tsx --test --experimental-test-coverage --test-coverage-lines=85 --test-coverage-branches=80 --test-coverage-functions=85 \"packages/**/*.test.ts\""
   },
