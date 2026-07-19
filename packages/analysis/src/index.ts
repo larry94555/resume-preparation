@@ -11,3 +11,14 @@ export {
   buildReviewResumeUser,
 } from "./prompts/review-resume.js";
 export { reviewAtsSystem, buildReviewAtsUser } from "./prompts/review-ats.js";
+export {
+  flattenRequirements,
+  buildFitReport,
+  scoreRequirement,
+  matchResumeToJob,
+} from "./matching.js";
+export type { RequirementInput, RequirementMatch, FitReport } from "./matching.js";
+export {
+  scoreRequirementSystem,
+  buildScoreRequirementUser,
+} from "./prompts/score-requirement.js";
