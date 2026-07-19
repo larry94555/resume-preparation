@@ -1,0 +1,30 @@
+name: ci
+
+# Quality gate for every PR and push to main. The engine packages must stay
+# type-clean and their unit tests must pass with coverage above the floors.
+# LLM-backed behavior is NOT exercised here — the model endpoint is not reachable
+# in CI, so anything that needs it self-skips (see DESIGN.md, "Testing strategy").
+# What runs here is the deterministic core: scoring, parsing, diffing, versioning.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          # Node 22+ for the built-in test runner's coverage-threshold flags.
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - name: Typecheck (all packages)
+        run: npm run typecheck
+      - name: Unit tests + coverage floors
+        run: npm run test:coverage:ci
