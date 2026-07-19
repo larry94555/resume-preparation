@@ -1,0 +1,26 @@
+{
+  "name": "@resume-prep/web",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@resume-prep/analysis": "*",
+    "@resume-prep/documents": "*",
+    "@resume-prep/ingest": "*",
+    "@resume-prep/linkedin": "*",
+    "@resume-prep/llm": "*",
+    "@resume-prep/schema": "*",
+    "@resume-prep/versioning": "*",
+    "next": "^14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.3",
+    "@types/react-dom": "^18.3.0"
+  }
+}

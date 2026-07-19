@@ -5,18 +5,22 @@
   "type": "module",
   "description": "Analyze and improve a resume, LinkedIn profile, and cover letters against job descriptions using a local LLM, with versioned change history.",
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "web"
   ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit -p packages/schema/tsconfig.json && tsc --noEmit -p packages/scoring/tsconfig.json && tsc --noEmit -p packages/llm/tsconfig.json && tsc --noEmit -p packages/documents/tsconfig.json && tsc --noEmit -p packages/versioning/tsconfig.json && tsc --noEmit -p packages/ingest/tsconfig.json && tsc --noEmit -p packages/analysis/tsconfig.json",
+    "typecheck": "tsc --noEmit -p packages/schema/tsconfig.json && tsc --noEmit -p packages/scoring/tsconfig.json && tsc --noEmit -p packages/llm/tsconfig.json && tsc --noEmit -p packages/documents/tsconfig.json && tsc --noEmit -p packages/versioning/tsconfig.json && tsc --noEmit -p packages/ingest/tsconfig.json && tsc --noEmit -p packages/analysis/tsconfig.json && tsc --noEmit -p packages/linkedin/tsconfig.json",
     "test": "node --import tsx --test \"packages/**/*.test.ts\"",
     "review": "node --import tsx packages/analysis/bin/review.ts",
     "match": "node --import tsx packages/analysis/bin/match.ts",
     "coach": "node --import tsx packages/analysis/bin/coach.ts",
     "generate": "node --import tsx packages/analysis/bin/generate.ts",
+    "linkedin": "node --import tsx packages/linkedin/bin/linkedin.ts",
+    "web:dev": "npm run dev -w @resume-prep/web",
+    "web:build": "npm run build -w @resume-prep/web",
     "test:coverage": "node --import tsx --test --experimental-test-coverage \"packages/**/*.test.ts\"",
     "test:coverage:ci": "node --import tsx --test --experimental-test-coverage --test-coverage-lines=85 --test-coverage-branches=80 --test-coverage-functions=85 \"packages/**/*.test.ts\""
   },

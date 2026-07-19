@@ -23,6 +23,12 @@ export {
 export { MatchAssessment } from "./match.js";
 export { CoverLetter } from "./cover-letter.js";
 export {
+  LinkedInProfile,
+  LinkedInReview,
+  LinkedInChange,
+  LinkedInChangeSet,
+} from "./linkedin.js";
+export {
   ChallengeQuestions,
   EvidenceEvaluation,
   ImprovementEffort,

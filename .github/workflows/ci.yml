@@ -24,7 +24,13 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - name: Typecheck (all packages)
+      - name: Typecheck (all engine packages)
         run: npm run typecheck
       - name: Unit tests + coverage floors
         run: npm run test:coverage:ci
+      # Compiles and type-checks the Next.js web shell (the engine it wraps is
+      # covered by the unit tests above). No model is called at build time.
+      - name: Build the web shell
+        run: npm run web:build
+        env:
+          NEXT_TELEMETRY_DISABLED: "1"

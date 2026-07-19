@@ -5,6 +5,11 @@ node_modules/
 dist/
 *.tsbuildinfo
 
+# Next.js
+.next/
+next-env.d.ts
+web/out/
+
 # Environment & secrets
 .env
 .env.local
