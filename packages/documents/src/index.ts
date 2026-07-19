@@ -13,3 +13,22 @@ export {
   structureResumeSystem,
   buildStructureResumeUser,
 } from "./prompts/structure-resume.js";
+export {
+  resumeToDocx,
+  resumeToPdf,
+  coverLetterToDocx,
+  coverLetterToPdf,
+  explanationToDocx,
+  textToDocx,
+  resumeToBlocks,
+  coverLetterToBlocks,
+  textToBlocks,
+  blocksToPlainText,
+  blocksToDocx,
+  blocksToPdf,
+  explanationToBlocks,
+  composeCoverLetter,
+  composeCoverLetterSystem,
+  buildComposeCoverLetterUser,
+} from "./generate/index.js";
+export type { Block, ExplanationEntry, ExplanationInput } from "./generate/index.js";

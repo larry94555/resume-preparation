@@ -54,30 +54,36 @@ tooling. Reused patterns (re-implemented in this repo; **no edits to
 
 ## 3. Architecture
 
-Monorepo of small, single-purpose packages under `packages/*`, consumed by a
-Next.js app under `web/` (added in Phase 5). The engine is UI-agnostic and fully
-testable without a browser or a live model.
+Monorepo of small, single-purpose packages under `packages/*`, to be consumed by
+a Next.js app under `web/` (Phase 5b). The engine is UI-agnostic and fully
+testable without a browser or a live model. Status below reflects what is built
+(✅) vs. planned (⬜); see [ROADMAP.md](../ROADMAP.md).
 
 ```
 resume-preparation/
 ├─ packages/
-│  ├─ scoring/        # ✅ Phase 0: deterministic fit tiers & aggregation
-│  ├─ schema/         # shared TS types + runtime validation (zod) for all models
-│  ├─ llm/            # LlamaClient + prompt runner (JSON-mode, retries, seed)
-│  ├─ documents/      # parse & generate resumes/letters (PDF/DOCX ⇄ structured)
-│  ├─ ingest/         # job-description fetch (URL/HTML) + skill/experience extract
-│  ├─ analysis/       # LLM-backed reviews: resume, linkedin, JD-match, ATS, challenge
-│  ├─ versioning/     # app-level snapshot store: save, list, diff, revert
-│  └─ linkedin/       # import parse + change-set + (optional) assisted fill
-├─ web/               # Next.js UI (upload, dashboards, challenge chat, diff viewer)
+│  ├─ scoring/        # ✅ deterministic fit tiers & aggregation
+│  ├─ schema/         # ✅ shared TS types + runtime validation (zod) for all models
+│  ├─ llm/            # ✅ LlamaClient + runStructured prompt runner (JSON-mode, retries, seed)
+│  ├─ documents/      # ✅ parse (PDF/DOCX/HTML→ResumeModel) & generate (DOCX/PDF, cover letter, explanation)
+│  ├─ ingest/         # ✅ job-description fetch (URL/HTML) + skill/experience extract (injection-guarded)
+│  ├─ analysis/       # ✅ resume/ATS review, JD-match, coaching (challenge/improve), tailored scoring
+│  ├─ versioning/     # ✅ app-level snapshot store: save, history, field-level diff, revert
+│  └─ linkedin/       # ⬜ Phase 6: import parse + change-set + (optional) assisted fill
+├─ web/               # ⬜ Phase 5b: Next.js UI (upload, dashboards, challenge chat, diff viewer)
 ├─ docs/
 ├─ .github/workflows/ci.yml
 └─ package.json (workspaces)
 ```
 
-**Dependency direction:** `schema` ← everything; `llm` ← `analysis`, `linkedin`;
-`scoring` ← `analysis`; `documents`/`ingest` ← `analysis`; `versioning` ←
-`web`/orchestration. No cycles.
+Demo CLIs live in `packages/analysis/bin/` (`review`, `match`, `coach`,
+`generate`) and are wired as root npm scripts; they drive the engine end to end
+until the web shell lands.
+
+**Dependency direction:** `schema` ← everything; `scoring` ← `analysis`;
+`llm` ← `documents`/`ingest`/`analysis`; `documents`/`ingest`/`versioning` ←
+`analysis` (the last only via its demo CLIs); `linkedin` (Phase 6) will depend on
+`llm`/`schema`. No cycles.
 
 **Layering rule that makes the app testable:** the LLM returns *raw structured
 data* (scores, extracted items, rationales). All *classification, aggregation,
@@ -156,7 +162,7 @@ Implemented deterministically in `packages/scoring` (Phase 0 delivers the core).
 
 ---
 
-## 7. ATS optimization (Phase 3)
+## 7. ATS optimization (Phase 2)
 
 A distinct review with its own score and rubric, covering documented ATS
 best practices: parseable single-column-friendly structure, standard section
@@ -221,13 +227,17 @@ change to any document and every recommendation set.
 
 ---
 
-## 11. Web app (`web/`, introduced Phase 5, extended through Phase 8)
+## 11. Web app (`web/`, Phase 5b; polished in Phase 7)
 
 Next.js app wrapping the engine. Core screens: upload/import; resume review
 dashboard (score, strengths/weaknesses, recommendations); job analysis + fit
 dashboard (per-item scores, critical gaps); **challenge chat**; ATS panel;
-generation + **explanation page**; **version history + diff viewer**. A thin
-web shell lands early (Phase 5) so subsequent phases are demoable in the browser.
+generation + **explanation page**; **version history + diff viewer**.
+
+The web shell was split out of the original Phase 5 into its own phase (5b): the
+engine for requirements 4/5/10/11 shipped first and is exercised through the demo
+CLIs (`review`, `match`, `coach`, `generate`), so the browser UI can wrap a
+proven, fully-tested engine rather than being built alongside it.
 
 ---
 

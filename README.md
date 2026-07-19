@@ -9,8 +9,12 @@ Analysis runs against a **local, OpenAI-compatible LLM** (the same endpoint
 pattern used by [`job-preparation`](../job-preparation)), so your personal data
 stays on infrastructure you control.
 
-> **Status:** Phase 0 — design & scaffolding. See [ROADMAP.md](ROADMAP.md) for
-> the phased build plan and [docs/DESIGN.md](docs/DESIGN.md) for the architecture.
+> **Status:** engine complete through **Phase 5** (resume review, ATS,
+> job-description fit scoring, interactive coaching, versioning, and DOCX/PDF +
+> cover-letter generation). Next up: the Next.js web shell (Phase 5b) and
+> LinkedIn (Phase 6). See [ROADMAP.md](ROADMAP.md) for the phased build plan and
+> [docs/DESIGN.md](docs/DESIGN.md) for the architecture. Today the engine is
+> driven through the demo CLIs below.
 
 ## What it does (target functionality)
 
@@ -31,6 +35,7 @@ stays on infrastructure you control.
 - **Improve a skill/experience** — actionable recommendations to raise a score.
 - **Tailored generation** — updated resume (DOCX/PDF), custom cover letter, and a
   LinkedIn change set, each with an explanation page of what changed and why.
+  _(LinkedIn change set lands in Phase 6.)_
 - **Version control** — every change is snapshotted; list, diff, and revert from
   the app.
 
@@ -39,16 +44,34 @@ stays on infrastructure you control.
 ```bash
 npm ci
 npm run typecheck
-npm test
+npm test          # deterministic unit tests; live-model evals self-skip
 ```
 
 Requires Node 22+. Copy `.env.example` to `.env` and point `LLM_BASE_URL` at your
 model server to enable LLM-backed features (not needed for the deterministic
 unit tests).
 
+## Demo CLIs (need a running model — set `LLM_BASE_URL`)
+
+Prefix with `node --env-file=.env` to load your `.env`.
+
+```bash
+npm run review   -- <resume.pdf>                                  # resume + ATS review (req. 3, 12)
+npm run match    -- <resume.pdf> --job-url <url>                  # per-requirement fit scoring (req. 6, 7)
+npm run coach    -- challenge <resume.pdf> --requirement "Kubernetes" --evidence "…"   # req. 8
+npm run coach    -- improve   <resume.pdf> --requirement "Kubernetes"                  # req. 9
+npm run generate -- <resume.pdf> --job-html <job.html>           # tailored resume+cover letter+explanation, scored & versioned (req. 4, 5, 10, 11)
+```
+
 ## Layout
 
-- `packages/*` — engine packages (analysis, scoring, parsing, versioning, LLM
-  client). Pure/deterministic logic is unit-tested in CI.
-- `web/` — Next.js app (added in a later phase) that wraps the engine.
+- `packages/*` — engine packages, all unit-tested in CI:
+  - `schema` — shared types + zod validation
+  - `scoring` — deterministic fit tiers & aggregation
+  - `llm` — OpenAI-compatible client + schema-validating prompt runner
+  - `documents` — resume ingestion (PDF/DOCX/HTML) + DOCX/PDF generation
+  - `ingest` — job-description fetch/extract (injection-guarded)
+  - `analysis` — resume/ATS review, JD matching, coaching, tailored scoring
+  - `versioning` — snapshot store with field-level diff + revert
+- `web/` — Next.js app (Phase 5b) that wraps the engine.
 - `docs/` — design documentation.
