@@ -47,6 +47,8 @@ button.secondary { background: transparent; color: var(--accent); }
 .card { border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin: 12px 0; }
 .muted { color: var(--muted); }
 .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border); font-size: 12px; }
+.pill.ok { border-color: #16a34a; color: #16a34a; }
+.pill.error { border-color: #b91c1c; color: #b91c1c; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
 code { font-size: 12px; }

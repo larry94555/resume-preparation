@@ -21,6 +21,8 @@ secrets/*
 # App data / snapshot store (contains personal resume/profile data — never commit)
 .data/
 data/
+# Cached model results keyed by content hash (may contain personal data)
+working/
 
 # Logs & OS cruft
 *.log

@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@resume-prep/analysis": "*",
+    "@resume-prep/cache": "*",
     "@resume-prep/documents": "*",
     "@resume-prep/ingest": "*",
     "@resume-prep/linkedin": "*",

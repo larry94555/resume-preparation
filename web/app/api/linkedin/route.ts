@@ -1,5 +1,5 @@
 import { buildLinkedInChangeSet, reviewLinkedIn, structureLinkedInProfile } from "@resume-prep/linkedin";
-import { getClient, requireModel } from "../../../lib/engine";
+import { getChat, getClient, requireModel } from "../../../lib/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,8 +21,9 @@ export async function POST(req: Request) {
   const client = getClient();
   const gate = await requireModel(client);
   if (gate) return gate;
+  const chat = getChat(client);
 
-  const profile = await structureLinkedInProfile(profileText, client);
+  const profile = await structureLinkedInProfile(profileText, chat);
 
   if (mode === "changeset") {
     const changeSet = await buildLinkedInChangeSet(
@@ -33,6 +34,6 @@ export async function POST(req: Request) {
     return Response.json({ profile, changeSet });
   }
 
-  const review = await reviewLinkedIn(profile, client);
+  const review = await reviewLinkedIn(profile, chat);
   return Response.json({ profile, review });
 }

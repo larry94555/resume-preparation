@@ -29,14 +29,19 @@ export default function Home() {
   const [versions, setVersions] = useState<Json[]>([]);
   const [diff, setDiff] = useState<Json[] | null>(null);
 
+  // On load, confirm the model can actually generate (a real "hello" test) — not
+  // just that the endpoint is reachable.
   useEffect(() => {
-    fetch("/api/health")
+    fetch("/api/warmup")
       .then((r) => r.json())
       .then((d) => {
         setHealth(Boolean(d.ok));
         setHealthDetail(String(d.detail ?? ""));
       })
-      .catch(() => setHealth(false));
+      .catch((e) => {
+        setHealth(false);
+        setHealthDetail(e instanceof Error ? e.message : String(e));
+      });
   }, []);
 
   // Tick the elapsed-time counter while a progress-tracked action runs.
@@ -147,11 +152,11 @@ export default function Home() {
       <p className="muted">
         Local-first resume &amp; cover-letter coach.{" "}
         {health === null ? (
-          <span className="pill">checking model…</span>
+          <span className="pill">testing the model… (first load can take a moment)</span>
         ) : health ? (
-          <span className="pill">model: online</span>
+          <span className="pill ok" title={healthDetail}>✓ LLM is accessible and working…</span>
         ) : (
-          <span className="pill error" title={healthDetail}>model offline</span>
+          <span className="pill error" title={healthDetail}>✗ LLM problem</span>
         )}
         {health === false && healthDetail && (
           <>

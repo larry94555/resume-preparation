@@ -2,7 +2,7 @@ import { ingestResume } from "@resume-prep/documents";
 import { ingestJobDescription } from "@resume-prep/ingest";
 import { importLinkedInProfile } from "@resume-prep/linkedin";
 import { runTailoringWorkflow, type TailoringInput } from "@resume-prep/workflow";
-import { getClient, getStore, requireModel } from "../../../lib/engine";
+import { getChat, getClient, getStore, requireModel } from "../../../lib/engine";
 import { resolveJobInput, type JobRequest } from "../../../lib/job-input";
 import { ndjsonStream } from "../../../lib/stream";
 
@@ -28,6 +28,7 @@ export async function POST(req: Request) {
   const client = getClient();
   const gate = await requireModel(client);
   if (gate) return gate;
+  const chat = getChat(client);
 
   const resumeText = body.resumeText;
   const linkedinText = body.linkedinText;
@@ -40,7 +41,7 @@ export async function POST(req: Request) {
       total: 0,
       detail: "Extracting résumé structure with the model (often the slowest step)…",
     });
-    const resume = await ingestResume({ format: "text", text: resumeText }, client);
+    const resume = await ingestResume({ format: "text", text: resumeText }, chat);
 
     emit({
       type: "progress",
@@ -49,7 +50,7 @@ export async function POST(req: Request) {
       total: 0,
       detail: `Parsed résumé — ${resume.contact.name}, ${resume.experiences.length} role(s), ${resume.skills.length} skill(s)`,
     });
-    const job = await ingestJobDescription(jobInput, client);
+    const job = await ingestJobDescription(jobInput, chat);
 
     const input: TailoringInput = { resume, job };
     const jobReq = job.requiredSkills.length + job.requiredExperiences.length;
@@ -58,15 +59,23 @@ export async function POST(req: Request) {
 
     if (linkedinText?.trim()) {
       emit({ type: "progress", phase: "Reading your LinkedIn profile", done: 0, total: 0, detail: jobDetail });
-      input.linkedInProfile = await importLinkedInProfile({ format: "text", text: linkedinText }, client);
+      input.linkedInProfile = await importLinkedInProfile({ format: "text", text: linkedinText }, chat);
       emit({ type: "progress", phase: "Starting analysis", done: 0, total: 0, detail: "Parsed your LinkedIn profile" });
     } else {
       emit({ type: "progress", phase: "Starting analysis", done: 0, total: 0, detail: jobDetail });
     }
 
-    const result = await runTailoringWorkflow(input, client, getStore(), (p) =>
+    const result = await runTailoringWorkflow(input, chat, getStore(), (p) =>
       emit({ type: "progress", ...p }),
     );
+
+    emit({
+      type: "progress",
+      phase: "Done",
+      done: 0,
+      total: 0,
+      detail: `Reused ${chat.stats.hits} cached step(s); ran ${chat.stats.misses} new.`,
+    });
 
     const { documents, ...rest } = result;
     emit({

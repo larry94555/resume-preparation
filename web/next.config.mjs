@@ -4,6 +4,7 @@
 // server-only libs are kept external so they aren't bundled into the server.
 
 const enginePackages = [
+  "@resume-prep/cache",
   "@resume-prep/schema",
   "@resume-prep/scoring",
   "@resume-prep/llm",

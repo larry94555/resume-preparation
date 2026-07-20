@@ -149,8 +149,17 @@ Start the app (in the terminal where you set the env vars in Step 0b):
 npm run web:dev
 ```
 
-Open **http://localhost:3000**. The header shows **model: online** when your local
-model is reachable (if it says *offline*, revisit Step 0).
+Open **http://localhost:3000**. On load the app runs a quick "hello" test against
+your model and shows **✓ LLM is accessible and working…** in the header (the first
+load can take a moment while the model warms up). If it shows **✗ LLM problem**,
+the reason is printed right there — revisit Step 0.
+
+> **Repeat runs are fast (caching).** Every model result is cached by content in a
+> gitignored `working/` folder. Because grading is deterministic, re-reading the
+> **same** résumé (or re-running after a step failed) reuses the completed work
+> instead of calling the model again — the activity log ends with
+> "Reused N cached step(s)". Change the résumé/job and it re-runs only what
+> changed. Delete `working/` to clear the cache; set `WORKING_DIR` to relocate it.
 
 ### A1. Load your résumé and the job
 

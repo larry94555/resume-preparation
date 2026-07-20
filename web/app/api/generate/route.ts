@@ -1,7 +1,7 @@
 import { scoreTailoredResume } from "@resume-prep/analysis";
 import { composeCoverLetter, coverLetterToDocx, ingestResume, resumeToDocx } from "@resume-prep/documents";
 import { ingestJobDescription } from "@resume-prep/ingest";
-import { getClient, getStore, requireModel } from "../../../lib/engine";
+import { getChat, getClient, getStore, requireModel } from "../../../lib/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,11 +15,12 @@ export async function POST(req: Request) {
   const client = getClient();
   const gate = await requireModel(client);
   if (gate) return gate;
+  const chat = getChat(client);
 
-  const resume = await ingestResume({ format: "text", text: resumeText }, client);
-  const job = await ingestJobDescription({ text: jobText }, client);
-  const score = await scoreTailoredResume(resume, job, client);
-  const letter = await composeCoverLetter(resume, job, client);
+  const resume = await ingestResume({ format: "text", text: resumeText }, chat);
+  const job = await ingestJobDescription({ text: jobText }, chat);
+  const score = await scoreTailoredResume(resume, job, chat);
+  const letter = await composeCoverLetter(resume, job, chat);
 
   const [resumeDocx, coverDocx] = await Promise.all([resumeToDocx(resume), coverLetterToDocx(letter)]);
 

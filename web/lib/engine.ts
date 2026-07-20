@@ -1,10 +1,28 @@
 import { join } from "node:path";
+import { CachingChatClient } from "@resume-prep/cache";
+import { DiskCache } from "@resume-prep/cache";
 import { LlamaClient } from "@resume-prep/llm";
 import { SnapshotStore } from "@resume-prep/versioning";
 
 /** A model client configured from the environment (LLM_BASE_URL, etc.). */
 export function getClient(): LlamaClient {
   return new LlamaClient();
+}
+
+/** Where cached model results live (default `working/`; override with WORKING_DIR). */
+export function workingDir(): string {
+  return process.env.WORKING_DIR ?? "working";
+}
+
+/**
+ * A caching wrapper over the model client for the engine calls. Because the app
+ * pins temperature 0 + a fixed seed, identical requests (e.g. re-reading the same
+ * résumé) are served from `working/` instead of re-running the model — and any
+ * step that already succeeded is never repeated, even if a later step failed.
+ * Returns the {@link CachingChatClient} so callers can read `.stats`.
+ */
+export function getChat(client: LlamaClient): CachingChatClient {
+  return new CachingChatClient(client, new DiskCache(workingDir()), client.model);
 }
 
 /** The snapshot store rooted at DATA_DIR (default `.data`). */

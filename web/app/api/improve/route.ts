@@ -7,7 +7,7 @@ import {
 import { ingestResume } from "@resume-prep/documents";
 import type { JobRequirementKind } from "@resume-prep/schema";
 import type { Importance } from "@resume-prep/scoring";
-import { getClient, requireModel } from "../../../lib/engine";
+import { getChat, getClient, requireModel } from "../../../lib/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,6 +27,7 @@ export async function POST(req: Request) {
   const client = getClient();
   const gate = await requireModel(client);
   if (gate) return gate;
+  const chat = getChat(client);
 
   const requirement: RequirementInput = {
     label: body.label,
@@ -34,9 +35,9 @@ export async function POST(req: Request) {
     importance: body.importance ?? "required",
   };
 
-  const resume = await ingestResume({ format: "text", text: body.resumeText }, client);
-  const match = await scoreRequirement(requirement, renderResumeText(resume), client);
-  const plan = await planImprovement(match, client);
+  const resume = await ingestResume({ format: "text", text: body.resumeText }, chat);
+  const match = await scoreRequirement(requirement, renderResumeText(resume), chat);
+  const plan = await planImprovement(match, chat);
 
   return Response.json({ match, plan });
 }

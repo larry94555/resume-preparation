@@ -1,7 +1,7 @@
 import { matchResumeToJob, reviewAll } from "@resume-prep/analysis";
 import { ingestResume } from "@resume-prep/documents";
 import { ingestJobDescription } from "@resume-prep/ingest";
-import { getClient, requireModel } from "../../../lib/engine";
+import { getChat, getClient, requireModel } from "../../../lib/engine";
 import { resolveJobInput, type JobRequest } from "../../../lib/job-input";
 import { ndjsonStream } from "../../../lib/stream";
 
@@ -18,6 +18,7 @@ export async function POST(req: Request) {
   const gate = await requireModel(client);
   if (gate) return gate;
 
+  const chat = getChat(client);
   const resumeText = body.resumeText;
   const jobInput = resolveJobInput(body);
 
@@ -31,13 +32,13 @@ export async function POST(req: Request) {
       total: 0,
       detail: "Extracting résumé structure with the model (often the slowest step)…",
     });
-    const resume = await ingestResume({ format: "text", text: resumeText }, client);
+    const resume = await ingestResume({ format: "text", text: resumeText }, chat);
     const resumeDetail = `Parsed résumé — ${resume.contact.name}, ${resume.experiences.length} role(s), ${resume.skills.length} skill(s)`;
 
     let job = null;
     if (jobInput) {
       emit({ type: "progress", phase: "Reading the job description", done: 0, total: 0, detail: resumeDetail });
-      job = await ingestJobDescription(jobInput, client);
+      job = await ingestJobDescription(jobInput, chat);
       const req = job.requiredSkills.length + job.requiredExperiences.length;
       const pref = job.preferredSkills.length + job.preferredExperiences.length;
       emit({
@@ -51,7 +52,7 @@ export async function POST(req: Request) {
       emit({ type: "progress", phase: "Reviewing your résumé and ATS", done: 0, total: 0, detail: resumeDetail });
     }
 
-    const reviews = await reviewAll(resume, client);
+    const reviews = await reviewAll(resume, chat);
 
     let fit = null;
     if (job) {
@@ -62,7 +63,7 @@ export async function POST(req: Request) {
         total: 0,
         detail: `Résumé review: ${reviews.review.overallScore}/100 (${reviews.reviewTier}); ATS: ${reviews.ats.atsScore}/100 (${reviews.atsTier})`,
       });
-      fit = await matchResumeToJob(resume, job, client, (done, total, match) =>
+      fit = await matchResumeToJob(resume, job, chat, (done, total, match) =>
         emit({
           type: "progress",
           phase: `Scoring requirements (${done}/${total})`,
@@ -73,6 +74,13 @@ export async function POST(req: Request) {
       );
     }
 
+    emit({
+      type: "progress",
+      phase: "Done",
+      done: 0,
+      total: 0,
+      detail: `Reused ${chat.stats.hits} cached step(s); ran ${chat.stats.misses} new.`,
+    });
     emit({ type: "result", result: { resume, reviews, job, fit } });
   });
 }
