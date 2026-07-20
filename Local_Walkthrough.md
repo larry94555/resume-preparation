@@ -388,6 +388,13 @@ the gaps to weigh before you submit.
   changing it (the CLIs re-read it on every run).
 - **A PDF returns little/no text.** Scanned/image-only PDFs have no extractable
   text (no OCR). Export a text-based PDF/DOCX, or paste the text.
+- **"Reading your résumé" takes a long time, or fails with a timeout.** Reading
+  the résumé is a single model call that converts it to structured JSON — usually
+  the slowest step, and slow models (or a busy remote server) can exceed the
+  request timeout (default **120s**). If it times out you'll now get a clear
+  message telling you so. To fix: use a smaller/faster model, give the server more
+  resources, or raise the timeout by setting `LLM_TIMEOUT_MS` (e.g. `180000`) in
+  `secrets/secrets.env` and restarting.
 - **Small models sometimes return odd JSON.** The app automatically re-prompts to
   repair invalid output; a larger instruct model (e.g. an 8B) gives steadier
   results than a 1–3B one.

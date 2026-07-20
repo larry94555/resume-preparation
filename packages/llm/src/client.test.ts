@@ -60,6 +60,23 @@ test("a 4xx error is surfaced immediately without retrying", async () => {
   assert.equal(calls, 1);
 });
 
+test("a timeout is reported clearly and not retried", async () => {
+  let calls = 0;
+  globalThis.fetch = (async () => {
+    calls++;
+    const err = new Error("The operation was aborted");
+    err.name = "AbortError";
+    throw err;
+  }) as typeof fetch;
+
+  const client = new LlamaClient({ baseUrl: "http://x/v1", timeoutMs: 30000 });
+  await assert.rejects(
+    () => client.chatJson([{ role: "user", content: "hi" }]),
+    /timed out after 30s/,
+  );
+  assert.equal(calls, 1); // no wasteful re-timeout
+});
+
 test("a transient 5xx is retried and then succeeds", async () => {
   let calls = 0;
   globalThis.fetch = (async () => {

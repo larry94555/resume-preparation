@@ -33,7 +33,13 @@ export async function POST(req: Request) {
   const linkedinText = body.linkedinText;
 
   return ndjsonStream(async (emit) => {
-    emit({ type: "progress", phase: "Reading your résumé", done: 0, total: 0 });
+    emit({
+      type: "progress",
+      phase: "Reading your résumé",
+      done: 0,
+      total: 0,
+      detail: "Extracting résumé structure with the model (often the slowest step)…",
+    });
     const resume = await ingestResume({ format: "text", text: resumeText }, client);
 
     emit({

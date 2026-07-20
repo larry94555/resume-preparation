@@ -24,7 +24,13 @@ export async function POST(req: Request) {
   // Stream progress: ingest + review run as labeled (indeterminate) phases; the
   // per-requirement scoring drives a determinate bar.
   return ndjsonStream(async (emit) => {
-    emit({ type: "progress", phase: "Reading your résumé", done: 0, total: 0 });
+    emit({
+      type: "progress",
+      phase: "Reading your résumé",
+      done: 0,
+      total: 0,
+      detail: "Extracting résumé structure with the model (often the slowest step)…",
+    });
     const resume = await ingestResume({ format: "text", text: resumeText }, client);
     const resumeDetail = `Parsed résumé — ${resume.contact.name}, ${resume.experiences.length} role(s), ${resume.skills.length} skill(s)`;
 

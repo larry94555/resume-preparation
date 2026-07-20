@@ -59,7 +59,9 @@ export class LlamaClient implements ChatClient {
       o.baseUrl ?? llmEnv("BASE_URL") ?? llmEnv("SERVER_URL") ?? "http://localhost:8080/v1";
     this.baseUrl = rawBaseUrl.replace(/\/+$/, "");
     this.model = o.model ?? llmEnv("MODEL") ?? "local";
-    this.timeoutMs = o.timeoutMs ?? (Number(llmEnv("TIMEOUT_MS")) || 60000);
+    // Default 120s: a single generation (e.g. structuring a résumé) can be slow on
+    // a small CPU model or a remote server. Raise/lower via LLM_TIMEOUT_MS.
+    this.timeoutMs = o.timeoutMs ?? (Number(llmEnv("TIMEOUT_MS")) || 120000);
     this.apiKey = o.apiKey ?? llmEnv("API_KEY");
     this.seed = o.seed ?? (Number(llmEnv("SEED")) || 0);
     this.maxTokens = o.maxTokens ?? (Number(llmEnv("MAX_TOKENS")) || 2048);
@@ -168,8 +170,19 @@ export class LlamaClient implements ChatClient {
         if (res.status < 500) throw new Error(`llm-server responded ${res.status}`);
         lastErr = new Error(`llm-server responded ${res.status}`); // 5xx → retry
       } catch (e) {
-        if (e instanceof Error && /responded 4\d\d/.test(e.message)) throw e;
-        lastErr = e; // network error / timeout → retry
+        if (e instanceof Error && /responded 4\d\d/.test(e.message)) throw e; // client error
+        // A timeout (our AbortController firing) is terminal: retrying just waits
+        // another full timeout. Surface a clear, actionable message instead of the
+        // bare "The operation was aborted".
+        if (e instanceof Error && e.name === "AbortError") {
+          throw new Error(
+            `LLM request timed out after ${Math.round(this.timeoutMs / 1000)}s — the model at ` +
+              `${this.baseUrl} did not respond in time. It may be a large/slow model or an ` +
+              `overloaded server. Use a smaller/faster model, or raise LLM_TIMEOUT_MS ` +
+              `(currently ${this.timeoutMs}).`,
+          );
+        }
+        lastErr = e; // network error → retry
       } finally {
         clearTimeout(t);
       }
