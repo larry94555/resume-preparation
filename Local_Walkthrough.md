@@ -36,8 +36,11 @@ below.
     `llama-server` / vLLM / Ollama URL, optionally secured with an API key.
 - **Your three inputs:**
   - **Résumé** — a `.pdf`, `.docx`, or plain-text file (e.g. `resume.pdf`).
-  - **Job description** — save it as a text file (e.g. `job.txt`), or have the
-    posting URL, or a saved `.html` page.
+  - **Job description** — provide it any of three ways:
+    1. the **posting URL** (e.g. `https://…/careers/backend-engineer`);
+    2. a **saved HTML page** (in your browser: *Save Page As… → Webpage, HTML
+       Only*, e.g. `job.html`);
+    3. the **text** pasted into a file (e.g. `job.txt`).
   - **LinkedIn profile** — on LinkedIn, open your profile → **More → Save to PDF**
     (gives `Profile.pdf`), **or** just copy your headline/About/experience text
     into `linkedin.txt`.
@@ -126,7 +129,10 @@ You already have them from "What you'll need." For the examples below assume:
 
 ```
 resume.pdf      # your current résumé
-job.txt         # the job description, pasted into a text file
+# the job description — you only need ONE of these three:
+#   a posting URL, e.g. https://example.com/careers/backend-engineer
+job.html        # a saved HTML page of the posting  (Save Page As → HTML Only)
+job.txt         # or the job description pasted into a text file
 linkedin.txt    # your LinkedIn profile text  (or Profile.pdf from "Save to PDF")
 ```
 
@@ -149,9 +155,17 @@ On the **Tailor** page:
 
 - **Résumé** — click **Choose File** and pick `resume.pdf` (PDF/DOCX/txt are read
   automatically), or paste the text.
-- **Job description** — paste the contents of `job.txt`.
+- **Job description** — pick one of the three source buttons:
+  1. **URL** — paste the posting's link (the app fetches and reads it);
+  2. **Saved HTML** — choose your saved `job.html` file;
+  3. **Paste text** — paste the description text.
 - *(Optional)* expand **"paste your LinkedIn profile"** and paste `linkedin.txt`
   to also get LinkedIn suggestions in one shot.
+
+> **URL not working?** Some job boards block automated fetches or need JavaScript
+> to render. If a URL returns little/no text, open the posting in your browser,
+> **Save Page As → Webpage, HTML Only**, and use the **Saved HTML** option (or
+> copy the text and **Paste text**).
 
 ### A2. Evaluate how prepared you are
 
@@ -238,10 +252,12 @@ ATS review (score + keyword coverage).
 
 ### B2. Evaluate preparedness against the job (skills & experiences)
 
+Pick whichever job source you have (URL, saved HTML, or text):
+
 ```bash
-npm run match -- resume.pdf --job-text job.txt
-# or, from a posting URL:      npm run match -- resume.pdf --job-url "https://…"
-# or, from a saved page:       npm run match -- resume.pdf --job-html job.html
+npm run match -- resume.pdf --job-url "https://example.com/careers/backend-engineer"
+# or, from a saved HTML page:  npm run match -- resume.pdf --job-html job.html
+# or, from pasted text:        npm run match -- resume.pdf --job-text job.txt
 ```
 
 Prints per-requirement scores, tiers, cited evidence, the overall verdict, and
@@ -264,8 +280,12 @@ evidence into your résumé text/file before generating.
 
 ### B4. Generate targeted résumé + cover letter + gap explanation
 
+Use the same three job sources — URL first:
+
 ```bash
-npm run generate -- resume.pdf --job-text job.txt --out-dir out
+npm run generate -- resume.pdf --job-url "https://example.com/careers/backend-engineer" --out-dir out
+# or, from a saved HTML page:  npm run generate -- resume.pdf --job-html job.html --out-dir out
+# or, from pasted text:        npm run generate -- resume.pdf --job-text job.txt  --out-dir out
 ```
 
 Writes to `out/`:

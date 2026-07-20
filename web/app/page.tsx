@@ -9,6 +9,10 @@ type Json = any;
 
 export default function Home() {
   const [resumeText, setResumeText] = useState("");
+  const [jobMode, setJobMode] = useState<"url" | "html" | "text">("url");
+  const [jobUrl, setJobUrl] = useState("");
+  const [jobHtml, setJobHtml] = useState("");
+  const [jobHtmlName, setJobHtmlName] = useState("");
   const [jobText, setJobText] = useState("");
   const [linkedinText, setLinkedinText] = useState("");
   const [health, setHealth] = useState<boolean | null>(null);
@@ -43,15 +47,33 @@ export default function Home() {
     run("upload", async () => setResumeText(await uploadFileText(file)));
   };
 
+  const onJobHtml = (file: File | undefined) => {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setJobHtml(String(reader.result ?? ""));
+      setJobHtmlName(file.name);
+    };
+    reader.readAsText(file);
+  };
+
+  // Whichever job source is active becomes the request field the API expects.
+  const jobFields = () =>
+    jobMode === "url" ? { jobUrl } : jobMode === "html" ? { jobHtml } : { jobText };
+  const hasJob =
+    (jobMode === "url" && jobUrl.trim()) ||
+    (jobMode === "html" && jobHtml.trim()) ||
+    (jobMode === "text" && jobText.trim());
+
   const analyze = () =>
     run("analyze", async () => {
       setGeneration(null);
-      setAnalysis(await postJson("/api/analyze", { resumeText, jobText }));
+      setAnalysis(await postJson("/api/analyze", { resumeText, ...jobFields() }));
     });
 
   const tailor = () =>
     run("tailor", async () => {
-      const r = await postJson("/api/workflow", { resumeText, jobText, linkedinText });
+      const r = await postJson("/api/workflow", { resumeText, ...jobFields(), linkedinText });
       setAnalysis({ reviews: { review: r.review, reviewTier: r.reviewTier, ats: r.ats, atsTier: r.atsTier }, fit: r.fit });
       setGeneration(r);
       await loadVersions();
@@ -115,7 +137,29 @@ export default function Home() {
           <label>
             <strong>Job description</strong> <span className="muted">(optional for review; required to tailor)</span>
           </label>
-          <textarea value={jobText} onChange={(e) => setJobText(e.target.value)} placeholder="Paste the job description…" />
+          <div className="row" role="radiogroup" aria-label="Job description source">
+            <label><input type="radio" name="jobmode" checked={jobMode === "url"} onChange={() => setJobMode("url")} /> URL</label>
+            <label><input type="radio" name="jobmode" checked={jobMode === "html"} onChange={() => setJobMode("html")} /> Saved HTML</label>
+            <label><input type="radio" name="jobmode" checked={jobMode === "text"} onChange={() => setJobMode("text")} /> Paste text</label>
+          </div>
+          {jobMode === "url" && (
+            <input
+              type="url"
+              value={jobUrl}
+              onChange={(e) => setJobUrl(e.target.value)}
+              placeholder="https://example.com/careers/backend-engineer"
+              style={{ width: "100%", padding: 8, border: "1px solid var(--border)", borderRadius: 6 }}
+            />
+          )}
+          {jobMode === "html" && (
+            <div>
+              <input type="file" accept=".html,.htm" onChange={(e) => onJobHtml(e.target.files?.[0])} disabled={!!busy} />
+              {jobHtmlName && <p className="muted">Loaded {jobHtmlName} ({jobHtml.length.toLocaleString()} chars).</p>}
+            </div>
+          )}
+          {jobMode === "text" && (
+            <textarea value={jobText} onChange={(e) => setJobText(e.target.value)} placeholder="Paste the job description…" />
+          )}
         </div>
       </div>
 
@@ -128,7 +172,7 @@ export default function Home() {
         <button onClick={analyze} disabled={!!busy || !resumeText.trim()}>
           {busy === "analyze" ? "Analyzing…" : "Analyze resume"}
         </button>
-        <button onClick={tailor} disabled={!!busy || !resumeText.trim() || !jobText.trim()}>
+        <button onClick={tailor} disabled={!!busy || !resumeText.trim() || !hasJob}>
           {busy === "tailor" ? "Tailoring…" : "Run full tailoring"}
         </button>
         <button className="secondary" onClick={() => run("versions", loadVersions)} disabled={!!busy}>
