@@ -1,4 +1,5 @@
 import {
+  flattenRequirements,
   matchResumeToJob,
   reviewAts,
   reviewResume,
@@ -58,30 +59,82 @@ export interface TailoringResult {
  * each LLM step once. Any {@link ChatClient} works, so the whole pipeline is
  * unit-testable with a single fake.
  */
+/** A step-by-step progress update while the workflow runs. */
+export interface TailoringProgress {
+  /** Human-readable description of the current step (drives the progress label). */
+  phase: string;
+  /** Units completed so far (0…total). */
+  done: number;
+  /** Total units of work. */
+  total: number;
+  /** Optional detail line about what just finished (for a live activity log). */
+  detail?: string;
+}
+
 export async function runTailoringWorkflow(
   input: TailoringInput,
   client: ChatClient,
   store: SnapshotStore,
+  /** Optional progress callback, invoked as each step starts/finishes. */
+  onProgress?: (p: TailoringProgress) => void,
 ): Promise<TailoringResult> {
   const { resume, job } = input;
 
-  const review = await reviewResume(resume, client);
-  const ats = await reviewAts(resume, client, { targetJobText: job.rawText });
-  const fit = await matchResumeToJob(resume, job, client);
-  const coverLetter = await composeCoverLetter(resume, job, client);
+  // Total = review + ats + one per requirement + cover letter + doc generation +
+  // (LinkedIn review + change set) + versioning.
+  const reqCount = flattenRequirements(job).length;
+  const total = 2 + reqCount + 1 + 1 + (input.linkedInProfile ? 2 : 0) + 1;
+  let done = 0;
+  // Each emit carries the label of the step now STARTING plus the detail of what
+  // just finished (for the activity log).
+  const emit = (phase: string, detail?: string) =>
+    onProgress?.({ phase, done, total, ...(detail ? { detail } : {}) });
 
+  emit("Reviewing your résumé");
+  const review = await reviewResume(resume, client);
+  done++;
+
+  emit("Checking ATS compatibility", `Résumé review: ${review.overallScore}/100 (${classifyScore(review.overallScore)})`);
+  const ats = await reviewAts(resume, client, { targetJobText: job.rawText });
+  done++;
+
+  emit(`Scoring requirements (0/${reqCount})`, `ATS: ${ats.atsScore}/100 (${classifyScore(ats.atsScore)})`);
+  const fit = await matchResumeToJob(resume, job, client, (d, t, match) => {
+    done = 2 + d;
+    onProgress?.({
+      phase: `Scoring requirements (${d}/${t})`,
+      done,
+      total,
+      detail: `${match.label} (${match.importance} ${match.kind}): ${match.score}/100 — ${match.tier}`,
+    });
+  });
+  done = 2 + reqCount;
+
+  emit("Writing your cover letter");
+  const coverLetter = await composeCoverLetter(resume, job, client);
+  done++;
+
+  emit("Generating documents", `Cover letter drafted (${coverLetter.paragraphs.length} paragraph(s))`);
   const [resumeDocx, coverLetterDocx] = await Promise.all([
     resumeToDocx(resume),
     coverLetterToDocx(coverLetter, `Cover Letter — ${job.title ?? ""}`.trim()),
   ]);
+  done++;
 
   let linkedin: TailoringResult["linkedin"];
   if (input.linkedInProfile) {
-    const [liReview, changeSet] = await Promise.all([
-      reviewLinkedIn(input.linkedInProfile, client),
-      buildLinkedInChangeSet(input.linkedInProfile, client, { targetJobText: job.rawText }),
-    ]);
+    emit("Reviewing your LinkedIn profile", "Generated résumé and cover-letter .docx");
+    const liReview = await reviewLinkedIn(input.linkedInProfile, client);
+    done++;
+    emit("Building your LinkedIn change set", `LinkedIn review: ${liReview.overallScore}/100`);
+    const changeSet = await buildLinkedInChangeSet(input.linkedInProfile, client, {
+      targetJobText: job.rawText,
+    });
+    done++;
     linkedin = { review: liReview, changeSet };
+    emit("Saving versions", `LinkedIn change set: ${changeSet.changes.length} change(s)`);
+  } else {
+    emit("Saving versions", "Generated résumé and cover-letter .docx");
   }
 
   // Version the generated artifacts.
@@ -108,6 +161,8 @@ export async function runTailoringWorkflow(
     });
     linkedInChangeSetId = liSnap.id;
   }
+  done++;
+  emit("Done", "All artifacts saved to version history.");
 
   return {
     review,

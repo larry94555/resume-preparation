@@ -21,6 +21,63 @@ export async function postJson(url: string, body: unknown): Promise<any> {
   return data;
 }
 
+export interface Progress {
+  phase: string;
+  done: number;
+  total: number;
+  /** Optional detail line about what just finished (for the activity log). */
+  detail?: string;
+}
+
+/**
+ * POST `body` to `url` and read the NDJSON progress stream. Calls `onProgress`
+ * for each progress event and resolves with the final result payload. Throws if
+ * the server returns an error (either an HTTP error before streaming, or an
+ * `{ type: "error" }` event during it).
+ */
+export async function streamJson(
+  url: string,
+  body: unknown,
+  onProgress: (p: Progress) => void,
+): Promise<any> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok || !res.body) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.error ?? `Request failed (${res.status})`);
+  }
+
+  const reader = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let result: any;
+
+  const handle = (line: string) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    const event = JSON.parse(trimmed);
+    if (event.type === "progress") onProgress(event as Progress);
+    else if (event.type === "result") result = event.result;
+    else if (event.type === "error") throw new Error(event.error);
+  };
+
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let nl: number;
+    while ((nl = buffer.indexOf("\n")) >= 0) {
+      handle(buffer.slice(0, nl));
+      buffer = buffer.slice(nl + 1);
+    }
+  }
+  handle(buffer);
+  return result;
+}
+
 /** Upload a resume/profile file and return its extracted plain text. */
 export async function uploadFileText(file: File): Promise<string> {
   const fd = new FormData();

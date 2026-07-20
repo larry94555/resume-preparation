@@ -96,7 +96,16 @@ test("matchResumeToJob scores every requirement and builds a fit report", async 
     AWS: 40, // preferred, very weak → NOT a critical gap (not required)
     fintech: 5, // preferred, stretch → NOT a critical gap (not required)
   });
-  const report = await matchResumeToJob(RESUME, JOB, client);
+  const progress: Array<{ done: number; total: number; label: string; score: number }> = [];
+  const report = await matchResumeToJob(RESUME, JOB, client, (done, total, match) =>
+    progress.push({ done, total, label: match.label, score: match.score }),
+  );
+
+  // onProgress fires once per requirement (with the scored match), counting up.
+  assert.equal(progress.length, 5);
+  assert.deepEqual(progress[0], { done: 1, total: 5, label: "TypeScript", score: 92 });
+  assert.equal(progress[4]?.label, "fintech");
+  assert.equal(progress[4]?.done, 5);
 
   assert.equal(report.matches.length, 5);
   const ts = report.matches.find((m) => m.label === "TypeScript");

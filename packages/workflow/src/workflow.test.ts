@@ -96,6 +96,20 @@ afterEach(async () => {
   await rm(dir, { recursive: true, force: true });
 });
 
+test("runTailoringWorkflow reports monotonic progress up to the total", async () => {
+  const store = new SnapshotStore({ dir });
+  const updates: Array<{ phase: string; done: number; total: number }> = [];
+  await runTailoringWorkflow({ resume: RESUME, job: JOB }, new WorkflowClient(), store, (p) => updates.push(p));
+
+  assert.ok(updates.length > 0);
+  // total is constant; done never decreases and ends at total.
+  const total = updates[0]!.total;
+  assert.ok(updates.every((u) => u.total === total));
+  for (let i = 1; i < updates.length; i++) assert.ok(updates[i]!.done >= updates[i - 1]!.done);
+  assert.equal(updates.at(-1)?.done, total);
+  assert.equal(updates.at(-1)?.phase, "Done");
+});
+
 test("runTailoringWorkflow runs the full pipeline and versions the artifacts", async () => {
   const store = new SnapshotStore({ dir });
   const result = await runTailoringWorkflow({ resume: RESUME, job: JOB }, new WorkflowClient(), store);

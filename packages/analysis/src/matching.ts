@@ -112,12 +112,17 @@ export async function matchResumeToJob(
   resume: ResumeModel,
   job: JobDescription,
   client: ChatClient,
+  /** Called after each requirement is scored (done, total, the scored match). */
+  onProgress?: (done: number, total: number, match: RequirementMatch) => void,
 ): Promise<FitReport> {
   const resumeText = renderResumeText(resume);
   const requirements = flattenRequirements(job);
   const matches: RequirementMatch[] = [];
+  let done = 0;
   for (const req of requirements) {
-    matches.push(await scoreRequirement(req, resumeText, client));
+    const match = await scoreRequirement(req, resumeText, client);
+    matches.push(match);
+    onProgress?.(++done, requirements.length, match);
   }
   return buildFitReport(matches);
 }

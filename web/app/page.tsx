@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { DOCX_MIME, downloadBase64, postJson, uploadFileText } from "./ui";
+import { useEffect, useRef, useState } from "react";
+import { DOCX_MIME, downloadBase64, postJson, streamJson, uploadFileText, type Progress } from "./ui";
 
 // API payloads mirror the engine's (fully-typed, unit-tested) outputs; typed
 // loosely here since this shell only renders them.
@@ -19,6 +19,11 @@ export default function Home() {
   const [healthDetail, setHealthDetail] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
+  const [progress, setProgress] = useState<Progress | null>(null);
+  const [log, setLog] = useState<string[]>([]);
+  const [elapsed, setElapsed] = useState(0);
+  const startRef = useRef(0);
+  const logRef = useRef<HTMLDivElement>(null);
   const [analysis, setAnalysis] = useState<Json | null>(null);
   const [generation, setGeneration] = useState<Json | null>(null);
   const [versions, setVersions] = useState<Json[]>([]);
@@ -34,6 +39,13 @@ export default function Home() {
       .catch(() => setHealth(false));
   }, []);
 
+  // Tick the elapsed-time counter while a progress-tracked action runs.
+  useEffect(() => {
+    if (!progress) return;
+    const id = setInterval(() => setElapsed(Math.round((Date.now() - startRef.current) / 1000)), 500);
+    return () => clearInterval(id);
+  }, [progress !== null]);
+
   async function run(label: string, fn: () => Promise<void>) {
     setBusy(label);
     setError("");
@@ -43,8 +55,27 @@ export default function Home() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy("");
+      setProgress(null);
     }
   }
+
+  function startProgress() {
+    startRef.current = Date.now();
+    setElapsed(0);
+    setLog([]);
+    setProgress({ phase: "Starting…", done: 0, total: 0 });
+  }
+
+  // Update the bar and append any detail line to the activity log.
+  const onProgress = (p: Progress) => {
+    setProgress(p);
+    if (p.detail) setLog((prev) => [...prev, p.detail!]);
+  };
+
+  // Keep the activity log scrolled to the newest line.
+  useEffect(() => {
+    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
+  }, [log]);
 
   const onUpload = (file: File | undefined) => {
     if (!file) return;
@@ -72,12 +103,15 @@ export default function Home() {
   const analyze = () =>
     run("analyze", async () => {
       setGeneration(null);
-      setAnalysis(await postJson("/api/analyze", { resumeText, ...jobFields() }));
+      setAnalysis(null);
+      startProgress();
+      setAnalysis(await streamJson("/api/analyze", { resumeText, ...jobFields() }, onProgress));
     });
 
   const tailor = () =>
     run("tailor", async () => {
-      const r = await postJson("/api/workflow", { resumeText, ...jobFields(), linkedinText });
+      startProgress();
+      const r = await streamJson("/api/workflow", { resumeText, ...jobFields(), linkedinText }, onProgress);
       setAnalysis({ reviews: { review: r.review, reviewTier: r.reviewTier, ats: r.ats, atsTier: r.atsTier }, fit: r.fit });
       setGeneration(r);
       await loadVersions();
@@ -189,6 +223,40 @@ export default function Home() {
           Load version history
         </button>
       </div>
+
+      {progress && (
+        <section className="card">
+          <div className="progress-head">
+            <span>{progress.phase}</span>
+            <span className="muted">
+              {progress.total > 0 ? `${progress.done}/${progress.total} · ` : ""}
+              {elapsed}s elapsed
+              {progress.total > 0 && progress.done > 0
+                ? ` · ~${Math.max(0, Math.round((elapsed / progress.done) * (progress.total - progress.done)))}s left`
+                : ""}
+            </span>
+          </div>
+          <div className="progress-track">
+            <div
+              className={progress.total > 0 ? "progress-fill" : "progress-fill indeterminate"}
+              style={progress.total > 0 ? { width: `${Math.round((progress.done / progress.total) * 100)}%` } : undefined}
+            />
+          </div>
+        </section>
+      )}
+
+      {log.length > 0 && (
+        <section className="card">
+          <strong>Activity {progress && <span className="muted">(working…)</span>}</strong>
+          <div className="log" ref={logRef}>
+            {log.map((line, i) => (
+              <div key={i} className="log-line">
+                {line}
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {error && <p className="error">⚠ {error}</p>}
 
