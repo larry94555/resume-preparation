@@ -104,11 +104,19 @@ npm run secrets:check
 ### 0c. Install and smoke-test
 
 ```bash
-npm ci        # install dependencies
-npm test      # deterministic unit tests — no model needed; proves the install works
+npm ci         # install dependencies
+npm run check  # runs the tests and prints a clear verdict
 ```
 
-`npm test` should report all tests passing (a few live-model checks self-skip).
+`npm run check` ends with one of two banners:
+
+- **`✅  READY TO GO — all unit tests passed.`** → you're good; continue below.
+- **`❌  PLEASE FIX — …`** → something's off (usually `npm ci` wasn't run, or Node
+  is older than 22). Follow the hints it prints, then run `npm run check` again.
+
+(A few "live-model" checks self-skip because they need a running model — that's
+expected and does **not** count as a failure. `npm test` runs the same tests but
+without the friendly verdict.)
 
 ---
 
