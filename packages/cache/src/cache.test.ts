@@ -71,20 +71,38 @@ test("CachingChatClient caches chatText independently from chatJson", async () =
   assert.equal(inner.calls, 2);
 });
 
-test("CachingChatClient records each call (with the cached flag) for auditing", async () => {
-  const records: Array<{ cached: boolean; completion: string; kind: string }> = [];
-  const client = new CachingChatClient(new CountingClient(), new DiskCache(dir), "m", (r) =>
-    records.push({ cached: r.cached, completion: r.completion, kind: r.kind }),
-  );
+test("CachingChatClient emits correlated start/end events for auditing", async () => {
+  const events: any[] = [];
+  const client = new CachingChatClient(new CountingClient(), new DiskCache(dir), "m", (e) => events.push(e));
   const msgs: ChatMessage[] = [{ role: "user", content: "hi" }];
 
-  await client.chatJson(msgs); // miss
-  await client.chatJson(msgs); // hit
-  assert.equal(records.length, 2);
-  assert.equal(records[0]?.cached, false);
-  assert.equal(records[1]?.cached, true);
-  assert.equal(records[0]?.completion, records[1]?.completion);
-  assert.equal(records[0]?.kind, "json");
+  await client.chatJson(msgs); // miss → start + end(cached:false)
+  await client.chatJson(msgs); // hit  → start + end(cached:true)
+
+  assert.deepEqual(events.map((e) => e.phase), ["start", "end", "start", "end"]);
+  assert.equal(events[0].id, events[1].id); // start/end correlate by id
+  assert.equal(events[0].kind, "json");
+  assert.equal(events[1].cached, false);
+  assert.equal(events[3].cached, true);
+  assert.equal(events[1].completion, events[3].completion);
+});
+
+test("CachingChatClient records an end event (with error) when a call fails", async () => {
+  const events: any[] = [];
+  const failing: ChatClient = {
+    async chatJson() {
+      throw new Error("boom");
+    },
+    chatText(m) {
+      return this.chatJson(m);
+    },
+  };
+  const client = new CachingChatClient(failing, new DiskCache(dir), "m", (e) => events.push(e));
+  await assert.rejects(() => client.chatJson([{ role: "user", content: "hi" }]), /boom/);
+
+  assert.deepEqual(events.map((e) => e.phase), ["start", "end"]);
+  assert.equal(events[1].error, "boom");
+  assert.equal(events[1].completion, "");
 });
 
 test("CachingChatClient keys on the model tag (no cross-model bleed)", async () => {
