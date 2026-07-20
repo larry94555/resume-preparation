@@ -20,6 +20,8 @@ export default function Home() {
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [progress, setProgress] = useState<Progress | null>(null);
+  const [runState, setRunState] = useState<"running" | "done" | "failed" | null>(null);
+  const [lastAction, setLastAction] = useState<"analyze" | "tailor" | null>(null);
   const [log, setLog] = useState<string[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef(0);
@@ -44,13 +46,15 @@ export default function Home() {
       });
   }, []);
 
-  // Tick the elapsed-time counter while a progress-tracked action runs.
+  // Tick the elapsed-time counter only while a run is active; freeze it otherwise
+  // (so "Completed in Xs" / "Failed after Xs" stays put).
   useEffect(() => {
-    if (!progress) return;
+    if (runState !== "running") return;
     const id = setInterval(() => setElapsed(Math.round((Date.now() - startRef.current) / 1000)), 500);
     return () => clearInterval(id);
-  }, [progress !== null]);
+  }, [runState]);
 
+  // Generic runner for non-streaming actions (upload, versions, diff, revert).
   async function run(label: string, fn: () => Promise<void>) {
     setBusy(label);
     setError("");
@@ -60,7 +64,36 @@ export default function Home() {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy("");
-      setProgress(null);
+    }
+  }
+
+  function friendlyError(e: unknown): string {
+    const raw = e instanceof Error ? e.message : String(e);
+    if (/connection-lost|network|failed to fetch|load failed|aborted/i.test(raw)) {
+      return (
+        "The connection to the server was interrupted — this can happen during a very long model call. " +
+        "Your completed steps are saved, so “Try again” will resume where it left off rather than starting over. " +
+        `Details: ${raw}`
+      );
+    }
+    return raw;
+  }
+
+  // Runner for the streaming Analyze/Tailor actions: keeps the progress panel on
+  // finish (Completed / Failed) and records which action to retry.
+  async function runStream(action: "analyze" | "tailor", fn: () => Promise<void>) {
+    setBusy(action);
+    setLastAction(action);
+    setError("");
+    startProgress();
+    try {
+      await fn();
+      setRunState("done");
+    } catch (e) {
+      setError(friendlyError(e));
+      setRunState("failed");
+    } finally {
+      setBusy("");
     }
   }
 
@@ -68,6 +101,7 @@ export default function Home() {
     startRef.current = Date.now();
     setElapsed(0);
     setLog([]);
+    setRunState("running");
     setProgress({ phase: "Starting…", done: 0, total: 0 });
   }
 
@@ -106,16 +140,14 @@ export default function Home() {
     (jobMode === "text" && jobText.trim());
 
   const analyze = () =>
-    run("analyze", async () => {
+    runStream("analyze", async () => {
       setGeneration(null);
       setAnalysis(null);
-      startProgress();
       setAnalysis(await streamJson("/api/analyze", { resumeText, ...jobFields() }, onProgress));
     });
 
   const tailor = () =>
-    run("tailor", async () => {
-      startProgress();
+    runStream("tailor", async () => {
       const r = await streamJson("/api/workflow", { resumeText, ...jobFields(), linkedinText }, onProgress);
       setAnalysis({ reviews: { review: r.review, reviewTier: r.reviewTier, ats: r.ats, atsTier: r.atsTier }, fit: r.fit });
       setGeneration(r);
@@ -127,6 +159,11 @@ export default function Home() {
     setVersions(d.history ?? []);
     setDiff(null);
   }
+
+  const retry = () => {
+    if (lastAction === "analyze") analyze();
+    else if (lastAction === "tailor") tailor();
+  };
 
   const diffLatest = () =>
     run("diff", async () => {
@@ -229,30 +266,60 @@ export default function Home() {
         </button>
       </div>
 
-      {progress && (
+      {progress && runState && (
         <section className="card">
           <div className="progress-head">
-            <span>{progress.phase}</span>
+            <span>
+              {runState === "done" && <span className="pill ok">✓ completed</span>}{" "}
+              {runState === "failed" && <span className="pill error">✗ stopped</span>}{" "}
+              {runState === "done" ? "Completed" : runState === "failed" ? `Stopped during: ${progress.phase}` : progress.phase}
+            </span>
             <span className="muted">
-              {progress.total > 0 ? `${progress.done}/${progress.total} · ` : ""}
-              {elapsed}s elapsed
-              {progress.total > 0 && progress.done > 0
+              {progress.total > 0 && runState === "running" ? `${progress.done}/${progress.total} · ` : ""}
+              {runState === "done"
+                ? `finished in ${elapsed}s`
+                : runState === "failed"
+                  ? `ran for ${elapsed}s`
+                  : `${elapsed}s elapsed`}
+              {runState === "running" && progress.total > 0 && progress.done > 0
                 ? ` · ~${Math.max(0, Math.round((elapsed / progress.done) * (progress.total - progress.done)))}s left`
                 : ""}
             </span>
           </div>
           <div className="progress-track">
             <div
-              className={progress.total > 0 ? "progress-fill" : "progress-fill indeterminate"}
-              style={progress.total > 0 ? { width: `${Math.round((progress.done / progress.total) * 100)}%` } : undefined}
+              className={
+                runState === "done"
+                  ? "progress-fill done"
+                  : runState === "failed"
+                    ? "progress-fill failed"
+                    : progress.total > 0
+                      ? "progress-fill"
+                      : "progress-fill indeterminate"
+              }
+              style={
+                runState === "done"
+                  ? { width: "100%" }
+                  : progress.total > 0
+                    ? { width: `${Math.round((progress.done / progress.total) * 100)}%` }
+                    : undefined
+              }
             />
           </div>
+          {runState === "failed" && (
+            <div style={{ marginTop: 10 }}>
+              <p className="error">⚠ {error}</p>
+              <button onClick={retry} disabled={!!busy}>
+                {busy ? "Retrying…" : "Try again (resumes from where it stopped)"}
+              </button>
+            </div>
+          )}
         </section>
       )}
 
       {log.length > 0 && (
         <section className="card">
-          <strong>Activity {progress && <span className="muted">(working…)</span>}</strong>
+          <strong>Activity {runState === "running" && <span className="muted">(working…)</span>}</strong>
           <div className="log" ref={logRef}>
             {log.map((line, i) => (
               <div key={i} className="log-line">
@@ -263,7 +330,7 @@ export default function Home() {
         </section>
       )}
 
-      {error && <p className="error">⚠ {error}</p>}
+      {error && runState !== "failed" && <p className="error">⚠ {error}</p>}
 
       {rv && (
         <section className="card">

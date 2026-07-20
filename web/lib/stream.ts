@@ -11,11 +11,22 @@ export function ndjsonStream(
   const stream = new ReadableStream({
     async start(controller) {
       const emit = (event: unknown) => controller.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+      // Heartbeat: a bare newline every 10s keeps the connection from going idle
+      // during a long single model call (an idle stream can be dropped by the
+      // browser/OS/proxy). Empty lines are ignored by the client parser.
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode("\n"));
+        } catch {
+          // stream already closed
+        }
+      }, 10000);
       try {
         await producer(emit);
       } catch (e) {
         emit({ type: "error", error: e instanceof Error ? e.message : String(e) });
       } finally {
+        clearInterval(heartbeat);
         controller.close();
       }
     },

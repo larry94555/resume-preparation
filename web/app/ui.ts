@@ -64,17 +64,25 @@ export async function streamJson(
     else if (event.type === "error") throw new Error(event.error);
   };
 
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buffer += decoder.decode(value, { stream: true });
-    let nl: number;
-    while ((nl = buffer.indexOf("\n")) >= 0) {
-      handle(buffer.slice(0, nl));
-      buffer = buffer.slice(nl + 1);
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = buffer.indexOf("\n")) >= 0) {
+        handle(buffer.slice(0, nl));
+        buffer = buffer.slice(nl + 1);
+      }
     }
+    handle(buffer);
+  } catch (e) {
+    // A read failure means the streaming connection dropped mid-request. Re-throw
+    // with a clear, actionable message (the page offers "Try again", which resumes
+    // from the on-disk cache).
+    const raw = e instanceof Error ? e.message : String(e);
+    throw new Error(`connection-lost: the connection to the server dropped mid-request (${raw})`);
   }
-  handle(buffer);
   return result;
 }
 
