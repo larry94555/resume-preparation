@@ -23,6 +23,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { probeModel } from "./probe-model.mjs";
 
 // Friendly alias → canonical env var the LlamaClient understands.
 const ALIASES = {
@@ -94,20 +95,28 @@ export function loadSecrets(file = process.env.SECRETS_FILE ?? resolve(REPO_ROOT
 // Always load on import (this is the preload entry point).
 const result = loadSecrets();
 
-// When run directly (`node utils/load-secrets.mjs`), print a masked summary.
+// When run directly (`node utils/load-secrets.mjs`, i.e. `npm run secrets:check`),
+// print a masked summary AND actually ping the model so you can see whether it's
+// reachable and, if not, exactly why.
 const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
 if (isMain) {
-  if (!result.found) {
-    console.log(`No secrets file at ${result.path} — using ambient environment only.`);
-    console.log(`Create one from secrets/secrets.env.example to use a hosted or local model.`);
-  } else {
-    console.log(`Secrets file: ${result.path}`);
-    const show = result.loaded.map((k) => (SECRET_KEYS.test(k) ? `${k}=****` : k));
-    console.log(`  loaded into env: ${show.join(", ") || "(none)"}`);
-    if (result.skipped.length) {
-      console.log(`  kept from env (not overridden): ${[...new Set(result.skipped)].join(", ")}`);
+  void (async () => {
+    if (!result.found) {
+      console.log(`No secrets file at ${result.path} — using ambient environment only.`);
+      console.log(`Create one from secrets/secrets.env.example to use a hosted or local model.`);
+    } else {
+      console.log(`Secrets file: ${result.path}`);
+      const show = result.loaded.map((k) => (SECRET_KEYS.test(k) ? `${k}=****` : k));
+      console.log(`  loaded into env: ${show.join(", ") || "(none)"}`);
+      if (result.skipped.length) {
+        console.log(`  kept from env (not overridden): ${[...new Set(result.skipped)].join(", ")}`);
+      }
     }
     console.log(`  effective LLM_BASE_URL: ${process.env.LLM_BASE_URL ?? "(unset)"}`);
     console.log(`  LLM_API_KEY: ${process.env.LLM_API_KEY ? "set" : "(unset)"}`);
-  }
+
+    process.stdout.write(`  pinging model… `);
+    const probe = await probeModel();
+    console.log(probe.ok ? `✅ reachable (${probe.detail})` : `❌ NOT reachable — ${probe.detail}`);
+  })();
 }

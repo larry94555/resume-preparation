@@ -10,7 +10,7 @@ import {
 import { ingestResume } from "@resume-prep/documents";
 import type { JobRequirementKind } from "@resume-prep/schema";
 import type { Importance } from "@resume-prep/scoring";
-import { getClient, noModelResponse } from "../../../lib/engine";
+import { getClient, requireModel } from "../../../lib/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -33,7 +33,8 @@ export async function POST(req: Request) {
   }
 
   const client = getClient();
-  if (!(await client.health())) return noModelResponse();
+  const gate = await requireModel(client);
+  if (gate) return gate;
 
   const requirement: RequirementInput = {
     label: body.label,

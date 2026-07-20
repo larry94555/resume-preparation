@@ -97,6 +97,33 @@ test("health reflects endpoint reachability", async () => {
   assert.equal(await down.health(), false);
 });
 
+test("reach falls back to /chat/completions when /models is missing", async () => {
+  const urls: string[] = [];
+  globalThis.fetch = (async (url: string) => {
+    urls.push(url);
+    return url.endsWith("/models") ? res(404, {}) : res(200, completion("ok"));
+  }) as typeof fetch;
+  const client = new LlamaClient({ baseUrl: "http://x/v1" });
+  const r = await client.reach();
+  assert.equal(r.ok, true);
+  assert.match(r.detail, /chat\/completions/);
+  assert.deepEqual(urls, ["http://x/v1/models", "http://x/v1/chat/completions"]);
+});
+
+test("reach reports why the endpoint is unreachable (with 401 hint)", async () => {
+  globalThis.fetch = (async () => res(401, {})) as typeof fetch;
+  const client = new LlamaClient({ baseUrl: "http://x/v1", apiKey: "wrong" });
+  const r = await client.reach();
+  assert.equal(r.ok, false);
+  assert.match(r.detail, /401/);
+  assert.match(r.detail, /API key/);
+});
+
+test("a trailing slash on the base URL is normalized", () => {
+  assert.equal(new LlamaClient({ baseUrl: "http://x/v1/" }).baseUrl, "http://x/v1");
+  assert.equal(new LlamaClient({ baseUrl: "http://x/v1///" }).baseUrl, "http://x/v1");
+});
+
 test("baseUrl falls back to LLM_/LLAMA_SERVER_URL when no BASE_URL is set", () => {
   const saved = {
     base: process.env.LLM_BASE_URL,

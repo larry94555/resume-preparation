@@ -2,7 +2,7 @@ import { ingestResume } from "@resume-prep/documents";
 import { ingestJobDescription } from "@resume-prep/ingest";
 import { importLinkedInProfile } from "@resume-prep/linkedin";
 import { runTailoringWorkflow, type TailoringInput } from "@resume-prep/workflow";
-import { getClient, getStore, noModelResponse } from "../../../lib/engine";
+import { getClient, getStore, requireModel } from "../../../lib/engine";
 import { resolveJobInput, type JobRequest } from "../../../lib/job-input";
 
 export const runtime = "nodejs";
@@ -24,7 +24,8 @@ export async function POST(req: Request) {
   }
 
   const client = getClient();
-  if (!(await client.health())) return noModelResponse();
+  const gate = await requireModel(client);
+  if (gate) return gate;
 
   const resume = await ingestResume({ format: "text", text: body.resumeText }, client);
   const job = await ingestJobDescription(jobInput, client);

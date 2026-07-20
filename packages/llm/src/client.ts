@@ -54,8 +54,10 @@ export class LlamaClient implements ChatClient {
     // Endpoint precedence: explicit option → LLM_BASE_URL/LLAMA_BASE_URL →
     // LLM_SERVER_URL/LLAMA_SERVER_URL (the name used for a hosted llama server) →
     // local default. This lets the same code target a local model or a remote one.
-    this.baseUrl =
+    // A trailing slash is stripped so `.../v1/` doesn't become `.../v1//models`.
+    const rawBaseUrl =
       o.baseUrl ?? llmEnv("BASE_URL") ?? llmEnv("SERVER_URL") ?? "http://localhost:8080/v1";
+    this.baseUrl = rawBaseUrl.replace(/\/+$/, "");
     this.model = o.model ?? llmEnv("MODEL") ?? "local";
     this.timeoutMs = o.timeoutMs ?? (Number(llmEnv("TIMEOUT_MS")) || 60000);
     this.apiKey = o.apiKey ?? llmEnv("API_KEY");
@@ -68,19 +70,58 @@ export class LlamaClient implements ChatClient {
     return this.apiKey ? { authorization: `Bearer ${this.apiKey}` } : {};
   }
 
-  /** True if the server answers a models/health probe quickly. */
-  async health(): Promise<boolean> {
+  private async timedFetch(url: string, init: RequestInit, ms: number): Promise<Response> {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms);
     try {
-      const ctrl = new AbortController();
-      const t = setTimeout(() => ctrl.abort(), 3000);
-      const r = await fetch(`${this.baseUrl}/models`, {
-        signal: ctrl.signal,
-        headers: this.authHeaders(),
-      });
+      return await fetch(url, { ...init, signal: ctrl.signal });
+    } finally {
       clearTimeout(t);
-      return r.ok;
-    } catch {
-      return false;
+    }
+  }
+
+  /** True if the endpoint is reachable. See {@link reach} for the reason. */
+  async health(): Promise<boolean> {
+    return (await this.reach()).ok;
+  }
+
+  /**
+   * Detailed reachability probe. Tries `GET /models` first (cheap), then falls
+   * back to a 1-token `POST /chat/completions` — some OpenAI-compatible servers
+   * (and proxies) don't expose `/models` even though completions work. Uses a
+   * generous timeout so a slower hosted endpoint over the web isn't reported as
+   * offline. Returns a human-readable `detail` for diagnostics.
+   */
+  async reach(): Promise<{ ok: boolean; detail: string }> {
+    // Well above the old 3s so a remote server has time to answer.
+    const ms = Math.min(this.timeoutMs, 12000);
+    try {
+      const r = await this.timedFetch(`${this.baseUrl}/models`, { headers: this.authHeaders() }, ms);
+      if (r.ok) return { ok: true, detail: `GET ${this.baseUrl}/models → ${r.status}` };
+
+      const c = await this.timedFetch(
+        `${this.baseUrl}/chat/completions`,
+        {
+          method: "POST",
+          headers: { "content-type": "application/json", ...this.authHeaders() },
+          body: JSON.stringify({
+            model: this.model,
+            messages: [{ role: "user", content: "ping" }],
+            max_tokens: 1,
+            temperature: 0,
+          }),
+        },
+        ms,
+      );
+      if (c.ok) return { ok: true, detail: `POST ${this.baseUrl}/chat/completions → ${c.status}` };
+
+      const hint = r.status === 401 || c.status === 401 ? " — check your API key" : "";
+      return {
+        ok: false,
+        detail: `${this.baseUrl}: /models → ${r.status}, /chat/completions → ${c.status}${hint}`,
+      };
+    } catch (e) {
+      return { ok: false, detail: `cannot reach ${this.baseUrl}: ${e instanceof Error ? e.message : String(e)}` };
     }
   }
 

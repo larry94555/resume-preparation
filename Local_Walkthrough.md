@@ -104,22 +104,25 @@ npm run secrets:check
 > `LLM_API_KEY` as real shell environment variables instead — those always win
 > over the file.
 
-### 0c. Install and smoke-test
+### 0c. Install and check
+
+Do this **after** Step 0b (so your model is configured). `npm run check` runs the
+unit tests **and pings your model**, then prints one clear verdict:
 
 ```bash
-npm ci         # install dependencies
-npm run check  # runs the tests and prints a clear verdict
+npm ci
+npm run check
 ```
 
-`npm run check` ends with one of two banners:
+- **`✅  READY TO GO`** — tests passed and your model is reachable. Continue below.
+- **`⚠️  NOT READY — … the MODEL is NOT reachable`** — the code is fine but the app
+  can't reach your model. Fix `secrets/secrets.env` (or start your local model),
+  then re-run. To see exactly why, run `npm run secrets:check` — it prints the
+  effective `LLM_BASE_URL` and pings the endpoint.
+- **`❌  PLEASE FIX`** — a unit test failed (usually `npm ci` wasn't run, or Node is
+  older than 22). Follow the hints, then re-run.
 
-- **`✅  READY TO GO — all unit tests passed.`** → you're good; continue below.
-- **`❌  PLEASE FIX — …`** → something's off (usually `npm ci` wasn't run, or Node
-  is older than 22). Follow the hints it prints, then run `npm run check` again.
-
-(A few "live-model" checks self-skip because they need a running model — that's
-expected and does **not** count as a failure. `npm test` runs the same tests but
-without the friendly verdict.)
+(`npm test` runs the same tests without the model check or the friendly verdict.)
 
 ---
 
@@ -373,10 +376,13 @@ the gaps to weigh before you submit.
 ## Troubleshooting
 
 - **Header says "model offline" / CLI prints "No LLM endpoint reachable."**
-  Your endpoint isn't reachable or the URL/key is wrong. Run `npm run secrets:check`
-  to see the effective `LLM_BASE_URL`. For a local model, confirm the server is up
-  (`curl http://localhost:11434/v1/models`). For a hosted server, confirm the URL
-  is reachable and the `API_KEY` matches the server's `--api-key`.
+  The web header and CLIs now show the **reason** (URL + HTTP status, or the
+  connection error). Run **`npm run secrets:check`** to see the effective
+  `LLM_BASE_URL` and a live ping result. For a local model, confirm the server is up
+  (`curl http://localhost:11434/v1/models`). For a hosted server, confirm the URL is
+  reachable and the `API_KEY` matches the server's `--api-key`. The app also accepts
+  servers that don't expose `/models` (it falls back to a small `/chat/completions`
+  probe) and waits up to ~12s for a slower remote endpoint.
 - **Edited `secrets/secrets.env` while the web app was running.** The web app
   loads the secrets file on startup, so **restart** `npm run web:dev` after
   changing it (the CLIs re-read it on every run).

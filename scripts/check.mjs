@@ -1,38 +1,59 @@
 #!/usr/bin/env node
-// Friendly setup check: runs the unit tests (no model needed) and ends with a
-// clear verdict so you know whether you're good to continue the walkthrough.
+// Friendly setup check: runs the unit tests AND pings your model, then prints a
+// clear verdict so you know whether you're truly good to go.
 //   npm run check
 
+import "../utils/load-secrets.mjs"; // populate env from secrets/secrets.env (if present)
 import { spawn } from "node:child_process";
+import { probeModel } from "../utils/probe-model.mjs";
 
 const line = "─".repeat(64);
 const testArgs = ["--import", "tsx", "--test", "packages/**/*.test.ts"];
 
-function fail(reason) {
+function banner(lines) {
   console.log(`\n${line}`);
-  console.log(`❌  PLEASE FIX — ${reason}`);
-  console.log("    • Did you run `npm ci` first?");
-  console.log("    • Are you on Node 22 or newer?  Check with:  node --version");
-  console.log("    • Scroll up to the first line starting with `✖` to see which test failed.");
+  for (const l of lines) console.log(l);
   console.log(line);
-  process.exit(1);
 }
 
-console.log("Running unit tests (no model needed — this just checks your setup)…\n");
+console.log("1/2  Running unit tests (no model needed)…\n");
 
 const child = spawn(process.execPath, testArgs, { stdio: "inherit" });
 
-child.on("error", (err) => fail(`could not start the test runner: ${err.message}`));
+child.on("error", (err) => {
+  banner([`❌  PLEASE FIX — could not start the test runner: ${err.message}`]);
+  process.exit(1);
+});
 
-child.on("exit", (code) => {
-  if (code === 0) {
-    console.log(`\n${line}`);
-    console.log("✅  READY TO GO — all unit tests passed.");
-    console.log("    (A few live-model checks self-skip; that's expected and fine.)");
-    console.log("    Next: put your model settings in  secrets/secrets.env  and continue");
-    console.log("    the walkthrough (Local_Walkthrough.md).");
-    console.log(line);
+child.on("exit", async (code) => {
+  if (code !== 0) {
+    banner([
+      `❌  PLEASE FIX — some unit tests failed (exit code ${code}).`,
+      "    • Did you run `npm ci` first, on Node 22+ (`node --version`)?",
+      "    • Scroll up to the first line starting with `✖` to see which test failed.",
+    ]);
+    process.exit(1);
+  }
+
+  console.log("\n2/2  Checking your model connection…");
+  const probe = await probeModel();
+
+  if (probe.ok) {
+    banner([
+      "✅  READY TO GO — unit tests passed AND your model is reachable.",
+      `    Model: ${probe.detail}`,
+      "    Continue the walkthrough (Local_Walkthrough.md).",
+    ]);
     return;
   }
-  fail(`some unit tests failed (exit code ${code}).`);
+
+  banner([
+    "⚠️  NOT READY — unit tests passed, but the MODEL is NOT reachable.",
+    `    ${probe.detail}`,
+    "    The app's core features need a model. Fix your model, then re-run:",
+    "      • Edit  secrets/secrets.env  (copy from secrets/secrets.env.example).",
+    "      • Local model: is `ollama serve` running?  Try:  npm run secrets:check",
+    "      • Hosted server: is the URL reachable and the API_KEY correct?",
+  ]);
+  process.exit(1);
 });

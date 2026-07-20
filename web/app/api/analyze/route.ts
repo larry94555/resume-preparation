@@ -1,7 +1,7 @@
 import { matchResumeToJob, reviewAll } from "@resume-prep/analysis";
 import { ingestResume } from "@resume-prep/documents";
 import { ingestJobDescription } from "@resume-prep/ingest";
-import { getClient, noModelResponse } from "../../../lib/engine";
+import { getClient, requireModel } from "../../../lib/engine";
 import { resolveJobInput, type JobRequest } from "../../../lib/job-input";
 
 export const runtime = "nodejs";
@@ -14,7 +14,8 @@ export async function POST(req: Request) {
   }
 
   const client = getClient();
-  if (!(await client.health())) return noModelResponse();
+  const gate = await requireModel(client);
+  if (gate) return gate;
 
   const resume = await ingestResume({ format: "text", text: body.resumeText }, client);
   const reviews = await reviewAll(resume, client);

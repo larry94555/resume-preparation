@@ -4,6 +4,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const ok = await getClient().health();
-  return Response.json({ ok });
+  const client = getClient();
+  const r = await client.reach();
+  return Response.json({ ok: r.ok, detail: r.detail, baseUrl: client.baseUrl });
 }
