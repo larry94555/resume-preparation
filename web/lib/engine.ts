@@ -20,3 +20,14 @@ export function noModelResponse(): Response {
     { status: 503 },
   );
 }
+
+/**
+ * Gate a route on model reachability. Returns a 503 Response with the concrete
+ * reason (URL, HTTP status, or connection error) when the model can't be reached,
+ * or null when it's good to proceed.
+ */
+export async function requireModel(client: LlamaClient): Promise<Response | null> {
+  const r = await client.reach();
+  if (r.ok) return null;
+  return Response.json({ error: `No LLM endpoint reachable — ${r.detail}` }, { status: 503 });
+}

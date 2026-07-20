@@ -1,7 +1,7 @@
 import { scoreTailoredResume } from "@resume-prep/analysis";
 import { composeCoverLetter, coverLetterToDocx, ingestResume, resumeToDocx } from "@resume-prep/documents";
 import { ingestJobDescription } from "@resume-prep/ingest";
-import { getClient, getStore, noModelResponse } from "../../../lib/engine";
+import { getClient, getStore, requireModel } from "../../../lib/engine";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,7 +13,8 @@ export async function POST(req: Request) {
   }
 
   const client = getClient();
-  if (!(await client.health())) return noModelResponse();
+  const gate = await requireModel(client);
+  if (gate) return gate;
 
   const resume = await ingestResume({ format: "text", text: resumeText }, client);
   const job = await ingestJobDescription({ text: jobText }, client);

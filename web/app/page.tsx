@@ -16,6 +16,7 @@ export default function Home() {
   const [jobText, setJobText] = useState("");
   const [linkedinText, setLinkedinText] = useState("");
   const [health, setHealth] = useState<boolean | null>(null);
+  const [healthDetail, setHealthDetail] = useState("");
   const [busy, setBusy] = useState("");
   const [error, setError] = useState("");
   const [analysis, setAnalysis] = useState<Json | null>(null);
@@ -26,7 +27,10 @@ export default function Home() {
   useEffect(() => {
     fetch("/api/health")
       .then((r) => r.json())
-      .then((d) => setHealth(Boolean(d.ok)))
+      .then((d) => {
+        setHealth(Boolean(d.ok));
+        setHealthDetail(String(d.detail ?? ""));
+      })
       .catch(() => setHealth(false));
   }, []);
 
@@ -113,7 +117,13 @@ export default function Home() {
         ) : health ? (
           <span className="pill">model: online</span>
         ) : (
-          <span className="pill error">model offline — set LLM_BASE_URL</span>
+          <span className="pill error" title={healthDetail}>model offline</span>
+        )}
+        {health === false && healthDetail && (
+          <>
+            <br />
+            <span className="error" style={{ fontSize: 13 }}>⚠ {healthDetail}</span>
+          </>
         )}
       </p>
 
