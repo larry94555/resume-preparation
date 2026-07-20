@@ -399,11 +399,16 @@ the gaps to weigh before you submit.
   text (no OCR). Export a text-based PDF/DOCX, or paste the text.
 - **"Reading your résumé" takes a long time, or fails with a timeout.** Reading
   the résumé is a single model call that converts it to structured JSON — usually
-  the slowest step, and slow models (or a busy remote server) can exceed the
-  request timeout (default **120s**). If it times out you'll now get a clear
-  message telling you so. To fix: use a smaller/faster model, give the server more
-  resources, or raise the timeout by setting `LLM_TIMEOUT_MS` (e.g. `180000`) in
-  `secrets/secrets.env` and restarting.
+  the slowest step. Each request now allows up to **10 minutes** (default) before
+  timing out; if it does time out you get a clear message. Open the **Audit** tab
+  (see below) to watch each model call and its duration live and see exactly where
+  the time goes. To speed things up: use a smaller/faster model or give the server
+  more resources; to change the limit, set `LLM_TIMEOUT_MS` (milliseconds) in
+  `secrets/secrets.env` and restart.
+- **Watch the model back-and-forth.** The **Audit** page (top nav) shows every
+  request/response between the app and the model — the exact prompt sent, the
+  reply, whether it was served from cache, and how long it took. Turn on
+  auto-refresh and run an analysis in another tab to watch calls stream in.
 - **Small models sometimes return odd JSON.** The app automatically re-prompts to
   repair invalid output; a larger instruct model (e.g. an 8B) gives steadier
   results than a 1–3B one.

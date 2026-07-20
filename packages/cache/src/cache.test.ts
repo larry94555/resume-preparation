@@ -71,6 +71,22 @@ test("CachingChatClient caches chatText independently from chatJson", async () =
   assert.equal(inner.calls, 2);
 });
 
+test("CachingChatClient records each call (with the cached flag) for auditing", async () => {
+  const records: Array<{ cached: boolean; completion: string; kind: string }> = [];
+  const client = new CachingChatClient(new CountingClient(), new DiskCache(dir), "m", (r) =>
+    records.push({ cached: r.cached, completion: r.completion, kind: r.kind }),
+  );
+  const msgs: ChatMessage[] = [{ role: "user", content: "hi" }];
+
+  await client.chatJson(msgs); // miss
+  await client.chatJson(msgs); // hit
+  assert.equal(records.length, 2);
+  assert.equal(records[0]?.cached, false);
+  assert.equal(records[1]?.cached, true);
+  assert.equal(records[0]?.completion, records[1]?.completion);
+  assert.equal(records[0]?.kind, "json");
+});
+
 test("CachingChatClient keys on the model tag (no cross-model bleed)", async () => {
   const inner = new CountingClient();
   const cache = new DiskCache(dir);

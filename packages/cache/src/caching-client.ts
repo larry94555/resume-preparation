@@ -8,6 +8,21 @@ export interface CacheStats {
   misses: number;
 }
 
+/** One recorded model round-trip, for an audit trail. */
+export interface LlmCallRecord {
+  /** ISO timestamp when the call completed. */
+  at: string;
+  kind: "json" | "text";
+  model: string;
+  /** True if served from cache (no model round-trip). */
+  cached: boolean;
+  durationMs: number;
+  /** The messages sent to the model. */
+  messages: ChatMessage[];
+  /** The completion returned. */
+  completion: string;
+}
+
 /**
  * A {@link ChatClient} decorator that memoizes completions on disk. Because the
  * app pins `temperature 0` + a fixed seed, a given message list always yields the
@@ -24,6 +39,8 @@ export class CachingChatClient implements ChatClient {
     private readonly cache: DiskCache,
     /** Model tag folded into the cache key so switching models never returns stale results. */
     private readonly modelTag: string,
+    /** Optional sink for an audit trail of every call (best-effort; never throws into the call). */
+    private readonly recorder?: (record: LlmCallRecord) => void,
   ) {}
 
   chatJson(messages: ChatMessage[]): Promise<string> {
@@ -35,14 +52,16 @@ export class CachingChatClient implements ChatClient {
   }
 
   private async memoize(
-    kind: string,
+    kind: "json" | "text",
     messages: ChatMessage[],
     produce: () => Promise<string>,
   ): Promise<string> {
+    const start = Date.now();
     const key = DiskCache.hash("chat", kind, this.modelTag, JSON.stringify(messages));
     const cached = await this.cache.get(key);
     if (cached !== undefined) {
       this.stats.hits++;
+      this.record(kind, messages, cached, true, Date.now() - start);
       return cached;
     }
     // Only cache on success — a thrown timeout/error leaves nothing behind, so the
@@ -50,6 +69,22 @@ export class CachingChatClient implements ChatClient {
     const out = await produce();
     this.stats.misses++;
     await this.cache.set(key, out);
+    this.record(kind, messages, out, false, Date.now() - start);
     return out;
+  }
+
+  private record(
+    kind: "json" | "text",
+    messages: ChatMessage[],
+    completion: string,
+    cached: boolean,
+    durationMs: number,
+  ): void {
+    if (!this.recorder) return;
+    try {
+      this.recorder({ at: new Date().toISOString(), kind, model: this.modelTag, cached, durationMs, messages, completion });
+    } catch {
+      // auditing must never break a real call
+    }
   }
 }

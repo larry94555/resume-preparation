@@ -28,7 +28,7 @@ export async function POST(req: Request) {
   if (mode === "changeset") {
     const changeSet = await buildLinkedInChangeSet(
       profile,
-      client,
+      chat,
       jobText?.trim() ? { targetJobText: jobText } : {},
     );
     return Response.json({ profile, changeSet });

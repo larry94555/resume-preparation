@@ -92,11 +92,14 @@ npm run web:dev     # Next.js dev server at http://localhost:3000
 npm run web:build   # production build (also run in CI to type-check the app)
 ```
 
-Three pages: **Tailor** (upload/paste a resume + job → review, ATS, job-fit
+Four pages: **Tailor** (upload/paste a resume + job → review, ATS, job-fit
 dashboard, one-click tailoring with DOCX downloads, and version history with
 diff/revert), **Coach** (challenge a score with evidence, or plan an
-improvement), and **LinkedIn** (profile review + copy-paste change set). Needs a
-running model (`LLM_BASE_URL`) for analysis.
+improvement), **LinkedIn** (profile review + copy-paste change set), and
+**Audit** (a live view of every request/response between the app and the model,
+with timings — to see what's slow). Repeated runs are cached (deterministic
+outputs) in a gitignored `working/` folder. Needs a running model
+(`LLM_BASE_URL`) for analysis.
 
 ## Layout
 

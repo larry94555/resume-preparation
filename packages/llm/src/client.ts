@@ -59,9 +59,10 @@ export class LlamaClient implements ChatClient {
       o.baseUrl ?? llmEnv("BASE_URL") ?? llmEnv("SERVER_URL") ?? "http://localhost:8080/v1";
     this.baseUrl = rawBaseUrl.replace(/\/+$/, "");
     this.model = o.model ?? llmEnv("MODEL") ?? "local";
-    // Default 120s: a single generation (e.g. structuring a résumé) can be slow on
-    // a small CPU model or a remote server. Raise/lower via LLM_TIMEOUT_MS.
-    this.timeoutMs = o.timeoutMs ?? (Number(llmEnv("TIMEOUT_MS")) || 120000);
+    // Default 10 minutes: a single generation (e.g. structuring a résumé) can be
+    // very slow on a small CPU model or a busy remote server. Raise/lower via
+    // LLM_TIMEOUT_MS.
+    this.timeoutMs = o.timeoutMs ?? (Number(llmEnv("TIMEOUT_MS")) || 600000);
     this.apiKey = o.apiKey ?? llmEnv("API_KEY");
     this.seed = o.seed ?? (Number(llmEnv("SEED")) || 0);
     this.maxTokens = o.maxTokens ?? (Number(llmEnv("MAX_TOKENS")) || 2048);

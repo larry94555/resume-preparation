@@ -3,6 +3,7 @@ import { CachingChatClient } from "@resume-prep/cache";
 import { DiskCache } from "@resume-prep/cache";
 import { LlamaClient } from "@resume-prep/llm";
 import { SnapshotStore } from "@resume-prep/versioning";
+import { auditRecorder } from "./audit";
 
 /** A model client configured from the environment (LLM_BASE_URL, etc.). */
 export function getClient(): LlamaClient {
@@ -22,7 +23,7 @@ export function workingDir(): string {
  * Returns the {@link CachingChatClient} so callers can read `.stats`.
  */
 export function getChat(client: LlamaClient): CachingChatClient {
-  return new CachingChatClient(client, new DiskCache(workingDir()), client.model);
+  return new CachingChatClient(client, new DiskCache(workingDir()), client.model, auditRecorder());
 }
 
 /** The snapshot store rooted at DATA_DIR (default `.data`). */
