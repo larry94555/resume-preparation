@@ -18,7 +18,14 @@ function banner(lines) {
 
 console.log("1/2  Running unit tests (no model needed)…\n");
 
-const child = spawn(process.execPath, testArgs, { stdio: "inherit" });
+// Run the tests WITHOUT the model env vars so the live-model tests self-skip and
+// this stays fast. (We keep them in this process for the model ping below.)
+const testEnv = { ...process.env };
+for (const key of Object.keys(testEnv)) {
+  if (/^(LLM_|LLAMA_)/.test(key) || key === "API_KEY") delete testEnv[key];
+}
+
+const child = spawn(process.execPath, testArgs, { stdio: "inherit", env: testEnv });
 
 child.on("error", (err) => {
   banner([`❌  PLEASE FIX — could not start the test runner: ${err.message}`]);
